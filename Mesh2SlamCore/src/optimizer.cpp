@@ -10,7 +10,7 @@ void Optimizer::globalBundleAdjustment(std::shared_ptr< Map> pMap, const int ite
 {
     std::vector<Frame*> vpFrames = pMap->getFrames();
     std::vector<MapPoint*> vpMapPoints = pMap->getMapPoints();
-    bundleAdjustN(vpFrames, vpMapPoints,  true,iterations);
+    globalBA(vpFrames, vpMapPoints, true, iterations);
 }
 
 int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
@@ -168,11 +168,7 @@ int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
             nBad++;
             mapPoint->increaseBad();
             mapPoint = nullptr;
-            // if(mapPoint->getBadCount() >= 3)
-            // {
-            //     mapPoint->setBad();
-            //     mapPoint = nullptr;
-            // }
+
         }
         else
         {
@@ -183,7 +179,7 @@ int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
     return (N - nBad);
 }
 
-void Optimizer::bundleAdjust(std::shared_ptr<Map> pMap, Frame *newFrame, bool *stop, SlamParams* slamParams)
+void Optimizer::localBA(std::shared_ptr<Map> pMap, Frame *newFrame, bool *stop, SlamParams* slamParams)
 {
     int iterations1 = slamParams->optimizationParams.BAIterations1;
     int iterations2 = slamParams->optimizationParams.BAIterations2;
@@ -331,7 +327,7 @@ void Optimizer::bundleAdjust(std::shared_ptr<Map> pMap, Frame *newFrame, bool *s
 
             //get index of map point on frame
             if(mapPoint->isInFrameView(frame))
-                idx = mapPoint->getFrameViews()[frame];
+                idx = mapPoint->getFrameViews().at(frame);
 
             else
                 continue;
@@ -438,7 +434,7 @@ void Optimizer::bundleAdjust(std::shared_ptr<Map> pMap, Frame *newFrame, bool *s
 
 }
 
-void Optimizer::bundleAdjustN(const std::vector<Frame *> &vpFrames, const std::vector<MapPoint *> &vpMapPoints, const bool isSetRobust, const int iterations)
+void Optimizer::globalBA(const std::vector<Frame *> &vpFrames, const std::vector<MapPoint *> &vpMapPoints, const bool isSetRobust, const int iterations)
 {
     const float thHuber2D = sqrt(5.99);
     const float thHuber3D = sqrt(7.815);

@@ -137,7 +137,7 @@ public:
     std::map<size_t, MapPoint*> getDescriptorToMapPoints(void) const {return m_descriptor_mapPoint;}
     std::unordered_map<size_t, size_t> getDescriptorToIdx(void) const {return m_descriptor_idx;}
     bool getFirstConnection() const {return m_firstConnection;}
-    std::map<Frame*,int> getConnectionToWeights(){return m_connetionWeights;}
+    std::map<Frame*,int> getConnectionToWeights(){return m_connectionWeights;}
     std::set<Frame*> getChildren(){return m_children;}
     const glm::mat4 getVirtualCamPose(void) const {return m_virtualCamPose;}
     const std::vector<size_t>(&getGrid())[GRID_COLS][GRID_ROWS]{return m_grid;}
@@ -175,11 +175,11 @@ private:
 	std::vector<PtPair> m_initMatches;
 
     //Frame connections and weights
-    std::vector<Frame*> m_OrderedConnectedFrames;
+    std::vector<Frame*> m_orderedConnectedFrames;
     std::vector<int> m_orderedConnectedWeights;
     bool m_firstConnection{true};
     Frame* m_parent{nullptr};
-    std::map<Frame*,int> m_connetionWeights;
+    std::map<Frame*,int> m_connectionWeights;
     std::set<Frame*> m_children;
 
     //std::vector<MapPoint*> m_mapPoints;
@@ -221,7 +221,7 @@ public:
     void setPose(const cv::Mat &pose);
     void setFrameID(const unsigned long int id) {m_ID = id;}
 	void setTimeStamp(const double timestamp) {m_timeStamp = timestamp;}
-    cv::Mat getPosew() {std::unique_lock<std::mutex> lock(m_mutexPose);  return m_Posew.clone();}
+    cv::Mat getPosew() {std::unique_lock<std::mutex> lock(m_mutexPose);  return m_posew.clone();}
     unsigned long int getFrameID() const {return m_ID;}
 private:
     void updateTransform();
@@ -238,7 +238,7 @@ private:
 
     cv::Mat m_Rw;
     cv::Mat m_Tw;
-    cv::Mat m_Posew;
+    cv::Mat m_posew;
 
     std::vector<std::vector<float> > m_vR;
     std::vector<std::vector<float> > m_vT;

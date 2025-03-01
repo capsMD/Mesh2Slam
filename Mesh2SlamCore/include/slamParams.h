@@ -18,6 +18,7 @@ struct SlamParams
             ransacParams    = other.ransacParams;
             errorParams     = other.errorParams;
             viewerParams    = other.viewerParams;
+            mapPointParams  = other.mapPointParams;
 		}
 		return *this;
 	}
@@ -67,6 +68,13 @@ struct SlamParams
         float minDisplacement{1};
     }optimizationParams;
 
+    struct MapPointParams
+    {
+        int maxPointDistance{60};
+        int maxNewPoints{50};
+    }mapPointParams;
+
+
 	struct FeatureParams
 	{
         int maxFeatures{ 200 };
@@ -77,7 +85,8 @@ struct SlamParams
         int minRefFrameMatches{10};
         int searchRadius{50};
         int minTracked{30};
-		float maxMapPointDist{20.0f};
+        float featuresMaxDepth{100.0f};
+
 	}featureParams;
 
 	struct RansacParams
@@ -111,7 +120,6 @@ struct SlamParams
     	float far{1000.0f};
     	float near{1.0f};
     	float camMoveFactor{1.0f};
-    	float featuresMaxDepth{10.0f};
     	std::string title {"CAPS-SLAM"};
     	glm::vec3 frameColor       { 0.0f,0.0f,0.0f };
     	glm::vec3 tframeColor      { 1.0f,1.0f,1.0f };

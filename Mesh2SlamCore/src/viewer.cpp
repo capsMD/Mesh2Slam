@@ -12,7 +12,7 @@ Viewer::Viewer(SlamParams* params, AAssetManager *assetManager): m_slamParams(pa
     m_tFrameColor = m_slamParams->viewerParams.tFrameColor;
     m_pointCloudColor = m_slamParams->viewerParams.pointCloudColor;
     m_scaleFactor = m_slamParams->viewerParams.scaleFactor;
-    m_featuresMaxDepth = m_slamParams->viewerParams.featuresMaxDepth;
+    m_featuresMaxDepth = m_slamParams->featureParams.featuresMaxDepth;
     m_meshColor = m_slamParams->viewerParams.meshColor;
     m_forceOriginStart = m_slamParams->viewerParams.forceOriginStart;
 
@@ -827,7 +827,7 @@ bool Shader::compile(GLenum shaderType, const std::string &shaderSrcFile) {
         GLchar *strInfoLog = new GLchar[infoLogLength + 1];
         glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
 
-        char* strShaderType;
+        const char* strShaderType;
         switch (shaderType) {
             case GL_VERTEX_SHADER: strShaderType = "vertex"; break;
             case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
@@ -847,6 +847,7 @@ bool Shader::compile(GLenum shaderType, const std::string &shaderSrcFile) {
     return true;
 }
 
+//used by android
 bool Shader::compile(GLenum shaderType, const std::string &shaderSrcFile, AAssetManager *assetManager)
 {
     std::string shaderSource;
@@ -881,7 +882,7 @@ bool Shader::compile(GLenum shaderType, const std::string &shaderSrcFile, AAsset
         GLchar *strInfoLog = new GLchar[infoLogLength + 1];
         glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
 
-        char* strShaderType;
+        const char* strShaderType;
         switch (shaderType)
         {
             case GL_VERTEX_SHADER: strShaderType = "vertex"; break;

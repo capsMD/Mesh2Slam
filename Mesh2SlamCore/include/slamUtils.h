@@ -492,17 +492,6 @@ static bool readCamTranslationsFile(const std::string& file, cv::Mat& t, const u
     return result;
 }
 
-//static std::vector<float> readInVector(cv::FileStorage& fs, const std::string& parameter)
-//{
-//    std::vector<float> v;
-//    cv::FileNode fn = fs[parameter];
-//
-//    if (fn.empty() || !fn.isSeq())
-//        std::cout << "Failed to read" + parameter + " from file." << std::endl;
-//
-//    fn >> v;
-//    return v;
-//}
 static glm::vec3 readInVector(cv::FileStorage& fs, const std::string& parameter)
 {
     std::vector<float> v;
@@ -531,7 +520,6 @@ static bool readConfigFile(const std::string& configFile, SlamParams*& slamParam
         return false;
     }
 
-
     //read in input source slamParams
     slamParams->inputParams.runMode	                = fs["InputSource.runMode"];
     slamParams->inputParams.type	                = fs["InputSource.type"];
@@ -555,7 +543,6 @@ static bool readConfigFile(const std::string& configFile, SlamParams*& slamParam
     slamParams->camParams.w                 = fs["Camera.w"];
     slamParams->camParams.h                 = fs["Camera.h"];
 
-
     //read in optimization slamParams
     slamParams->optimizationParams.BAIterations1        = fs["Optimization.BAIterations1"];
     slamParams->optimizationParams.BAIterations2        = fs["Optimization.BAIterations2"];
@@ -565,8 +552,11 @@ static bool readConfigFile(const std::string& configFile, SlamParams*& slamParam
     slamParams->optimizationParams.minJumpFrames        = fs["Optimization.minJumpFrames"];
     slamParams->optimizationParams.maxJumpFrames        = fs["Optimization.maxJumpFrames"];
     slamParams->optimizationParams.GBAJumpFrames        = fs["Optimization.GBAJumpFrames"];
-    slamParams->optimizationParams.minDisplacement        = fs["Optimization.minDisplacement"];
+    slamParams->optimizationParams.minDisplacement      = fs["Optimization.minDisplacement"];
 
+    //read in map points slamParams
+    slamParams->mapPointParams.maxPointDistance         = fs["MapPoint.maxPointDistance"];
+    slamParams->mapPointParams.maxNewPoints             = fs["MapPoint.maxNewPoints"];
 
     //read in feature slamParams
     slamParams->featureParams.maxFeatures               = fs["Feature.maxFeatures"];
@@ -577,14 +567,13 @@ static bool readConfigFile(const std::string& configFile, SlamParams*& slamParam
     slamParams->featureParams.minRefFrameMatches	    = fs["Feature.minRefFrameMatches"];
     slamParams->featureParams.searchRadius              = fs["Feature.searchRadius"];
     slamParams->featureParams.minTracked                = fs["Feature.minTracked"];
-    slamParams->featureParams.maxMapPointDist           = fs["Feature.maxMapPointDist"];
+    slamParams->featureParams.featuresMaxDepth          = fs["Feature.featuresMaxDepth"];
 
     //read in ransac slamParams
     slamParams->ransacParams.maxTrials		= fs["Ransac.maxTrials"];
     slamParams->ransacParams.threshold		= fs["Ransac.threshold"];
     slamParams->ransacParams.confidence	    = fs["Ransac.confidence"];
     slamParams->ransacParams.samples		= fs["Ransac.samples"];
-
 
     //read in error slamParams
     slamParams->errorParams.maxBadTrackCnt		= fs["Error.maxBadTrackCnt"];
@@ -594,7 +583,6 @@ static bool readConfigFile(const std::string& configFile, SlamParams*& slamParam
     slamParams->errorParams.minTriangulations	= fs["Error.minTriangulations"];
     slamParams->errorParams.maxSecondPassRatio	= fs["Error.maxSecondPassRatio"];
     slamParams->errorParams.maxBBRepDist	    = fs["Error.maxBBRepDist"];
-
 
     //read in viewer slamParams
     slamParams->viewerParams.runViewer          = fs["Viewer.runViewer"];
@@ -611,7 +599,6 @@ static bool readConfigFile(const std::string& configFile, SlamParams*& slamParam
     slamParams->viewerParams.fov                = fs["Viewer.fov"];
     slamParams->viewerParams.far                = fs["Viewer.far"];
     slamParams->viewerParams.near               = fs["Viewer.near"];
-    slamParams->viewerParams.featuresMaxDepth   = fs["Viewer.featuresMaxDepth"];
     slamParams->viewerParams.forceOriginStart   = fs["Viewer.forceOriginStart"];
 
     return true;

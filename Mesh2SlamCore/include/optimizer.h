@@ -84,8 +84,8 @@ class Optimizer
 {
 public:
     static void globalBundleAdjustment(std::shared_ptr< Map> pMap, const int iterations);
-    static void bundleAdjustN(const std::vector<Frame*>& vpFrames, const std::vector<MapPoint*>& vpMapPoints, const bool isSetRobust, const int iterations);
-    static void bundleAdjust(std::shared_ptr<Map> pMap, Frame* newFrame, bool* stop, SlamParams* slamParams);
+    static void globalBA(const std::vector<Frame*>& vpFrames, const std::vector<MapPoint*>& vpMapPoints, const bool isSetRobust, const int iterations);
+    static void localBA(std::shared_ptr<Map> pMap, Frame* newFrame, bool* stop, SlamParams* slamParams);
     static int pnpOnFrame(Frame& frame, const int iterations);
 private:
 };

@@ -8,12 +8,15 @@ std::mutex MapPoint::mMapPointsGlobalMutex;
 
 MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &map, const size_t descriptor, float e) : mPosition(position.clone()), m_map(map), m_vtxDescriptor(descriptor), m_error(e)
 {
+    {
+        std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);
+        m_ID = nextID++;
+    }
+
 //TODO: remove this; this is more for debugging purposes (visible)
     m_vposition[0] = mPosition.at<float>(0);
     m_vposition[1] = mPosition.at<float>(1);
     m_vposition[2] = mPosition.at<float>(2);
-
-    m_ID = nextID++;
 
     cv::Mat cameraOrigin = frame->getTw();
     cv::Mat pt2Cam = mPosition-cameraOrigin;
@@ -23,12 +26,15 @@ MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &
 
 MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &map, const size_t descriptor) : mPosition(position.clone()), m_map(map), m_vtxDescriptor(descriptor)
 {
+    {
+        std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);
+        m_ID = nextID++;
+    }
+
     //TODO: remove this; this is more for debugging purposes (visible)
     m_vposition[0] = mPosition.at<float>(0);
     m_vposition[1] = mPosition.at<float>(1);
     m_vposition[2] = mPosition.at<float>(2);
-
-    m_ID = nextID++;
 
     cv::Mat cameraOrigin = frame->getTw();
     cv::Mat pt2Cam = mPosition-cameraOrigin;
@@ -39,13 +45,14 @@ MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &
 
 MapPoint::MapPoint(const cv::Mat &position) : mPosition(position.clone())
 {
-
+    {
+        std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);
+        m_ID = nextID++;
+    }
     //TODO: remove this; this is more for debugging purposes (visible)
     m_vposition[0] = mPosition.at<float>(0);
     m_vposition[1] = mPosition.at<float>(1);
     m_vposition[2] = mPosition.at<float>(2);
-
-    m_ID = nextID++;
 }
 
 
@@ -62,7 +69,7 @@ void MapPoint::addFrameView(Frame *frame, size_t idx)
     m_ViewCnt++;
 }
 
-std::map<Frame *, size_t> MapPoint::getFrameViews(void)
+const std::map<Frame *, size_t>& MapPoint::getFrameViews(void)
 {
     std::unique_lock<std::mutex> lock(m_mutexFeatures);
     return  m_frameViews;
@@ -70,7 +77,7 @@ std::map<Frame *, size_t> MapPoint::getFrameViews(void)
 
 void MapPoint::setPos(const cv::Mat &pos)
 {
-    std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);
+    //std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);
     std::unique_lock<std::mutex> lock2(m_mutexPosition);
     pos.copyTo(mPosition);
     m_vposition[0] = mPosition.at<float>(0);
@@ -91,6 +98,8 @@ bool MapPoint::removeFrameView(Frame *frame)
     if(m_frameViews.count(frame))
     {
         m_frameViews.erase(frame);
+        m_ViewCnt--;
+        return true;
     }
     return false;
 }

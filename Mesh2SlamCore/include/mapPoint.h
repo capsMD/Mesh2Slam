@@ -20,14 +20,11 @@ class Map;
 class MapPoint
 {
 public:
-    MapPoint(const cv::Mat& position, Frame* frame, std::shared_ptr<Map>& map);
     MapPoint(const cv::Mat& position, Frame* frame, std::shared_ptr<Map>& map, const size_t descriptor);
     MapPoint(const cv::Mat& position, Frame* frame, std::shared_ptr<Map>& map, const size_t descriptor, float e);
     MapPoint(const cv::Mat& position);
-    MapPoint(const MapPoint& other) = default;
-    MapPoint& operator=(MapPoint&& other) noexcept = default;
 
-    std::map<Frame*,size_t> getFrameViews(void);
+    const std::map<Frame*,size_t>& getFrameViews(void);
     const cv::Mat& getPosition() const {return mPosition;}
     const int getDescriptor() const {return m_vtxDescriptor;}
     long unsigned int getFrameUpdateID(void) {return m_frameUpdate_ID;}
@@ -39,8 +36,6 @@ public:
     unsigned long int getActiveFuseID(void) const { return m_Fuse_ID; }
     unsigned long int getNFrameViews(void) const {return m_ViewCnt;}
     bool isInFrameView(Frame* frame);
-    char getPointType(void) const {return mPointType;}
-    size_t getBadCount(void) const {return m_badCount;}
     bool isBad(void) const {return m_isBad;}
 
     void setBad() {m_isBad = true;}
@@ -74,16 +69,12 @@ private:
     std::shared_ptr<Map> m_map{nullptr};
     MapPoint* m_mapPointReplaced{nullptr};
 
-    bool m_fused{false};
-
     std::map<Frame*,size_t> m_frameViews;
     unsigned long int m_ViewCnt{0};
 
     cv::Mat mPosition;
     std::vector<float> m_vposition{0.0f, 0.0f, 0.0f};
-    cv::Mat m_normal;
     cv::Mat m_initialNormal;
-    cv::Mat m_descriptor;
     size_t m_vtxDescriptor{0};
 
     size_t m_visibleCount{1};

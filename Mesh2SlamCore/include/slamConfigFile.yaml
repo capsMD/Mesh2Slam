@@ -28,11 +28,9 @@ Camera.fps: 30.0
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
 
-
 #--------------------------------------------------------------------------------------------
 # Optimization Parameters
 #--------------------------------------------------------------------------------------------
-
 Optimization.BAIterations1: 30
 Optimization.BAIterations2: 10
 Optimization.GBAIterations: 50
@@ -47,6 +45,11 @@ Optimization.minDisplacement: 0.1
 #--------------------------------------------------------------------------------------------
 # Feature Parameters
 #--------------------------------------------------------------------------------------------
+MapPoint.maxPointDistance: 60
+MapPoint.maxNewPoints: 50
+#--------------------------------------------------------------------------------------------
+# Feature Parameters
+#--------------------------------------------------------------------------------------------
 Feature.maxFeatures: 1000
 Feature.minFeatures: 100
 Feature.minMatches:  10
@@ -55,17 +58,14 @@ Feature.pruneDist:   10
 Feature.minRefFrameMatches: 10
 Feature.searchRadius: 200
 Feature.minTracked: 10
-Feature.maxMapPointDist: 60
+Feature.featuresMaxDepth: 100
 #--------------------------------------------------------------------------------------------
 # Ransac Parameters
 #--------------------------------------------------------------------------------------------
-
 Ransac.maxTrials: 1000
 Ransac.threshold:  2.0
 Ransac.confidence: 0.99
 Ransac.samples: 8
-
-
 #--------------------------------------------------------------------------------------------
 # Error Parameters
 #--------------------------------------------------------------------------------------------
@@ -94,4 +94,3 @@ Viewer.mouseMoveFactor: 1
 Viewer.fov: 90
 Viewer.far: 1000
 Viewer.near: 1
-Viewer.featuresMaxDepth: 100

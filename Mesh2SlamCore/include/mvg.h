@@ -26,7 +26,7 @@ class MVG
 public:
 	MVG()
 	{
-		mK = cv::Mat::eye(3, 3, CV_32F);
+        m_K = cv::Mat::eye(3, 3, CV_32F);
 		cv::Mat mRInitial= cv::Mat::eye(3, 3, CV_32F);
 		cv::Mat mtInitial= cv::Mat::eye(3, 1, CV_32F);
 		cv::Mat mH = cv::Mat::eye(3, 1, CV_32F);
@@ -103,29 +103,25 @@ private:
 private:
 	SlamParams* m_slamParams{ NULL };
 
-	std::vector<bool> mvInliersMatches;
-	std::vector<bool> mvInliersModel;
+	std::vector<bool> m_inliersModel;
 	
-	cv::Mat mK;
+	cv::Mat m_K;
 
-	std::vector<PtPair> mKptsMatches;
+	std::vector<PtPair> m_kptsMatches;
 	
 	//TODO: change from cv::Point2f to KeyPoint
-	std::vector<cv::Point2f> mKpts1;
-	std::vector<cv::Point2f> mKpts2;
-
-	std::vector<cv::Point2f> mKptsMatched1;
-	std::vector<cv::Point2f> mKptsMatched2;
+	std::vector<cv::Point2f> m_kpts1;
+	std::vector<cv::Point2f> m_kpts2;
 
 private:
 	//SlamParams
-	float	mMinParallax{ 1 }; 
-	float	mMinPassRatio{ 0.5f };
-	float	mReprojectionThreshold{ 4.0f }; 
-	int		mMinTriangulations{ 50 }; 
-	float	mMaxSecondPassRatio{ 0.8f };
-	int     mSamples{ 8 };
-	int		mMaxTrials{ 200 };
+	float	m_minParallax{1 };
+	float	m_minPassRatio{0.5f };
+	float	m_reprojectionThreshold{4.0f };
+	int		m_minTriangulations{50 };
+	float	m_maxSecondPassRatio{0.8f };
+	int     m_samples{8 };
+	int		m_maxTrials{200 };
 
 };
 

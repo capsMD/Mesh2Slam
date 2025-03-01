@@ -88,7 +88,7 @@ public:
     void startSLAM() ;
     void stopSLAM();
     std::shared_ptr<Slam> getSlam() {return m_slam;}
-    std::shared_ptr<Viewer> getViewer() { if(m_slam!= nullptr) return m_slam->getViewer();}
+    std::shared_ptr<Viewer> getViewer() { if(m_slam!= nullptr) return m_slam->getViewer(); return nullptr;}
     bool isInitialized(void) const {return m_slamInitialized;}
 private:
     std::shared_ptr<Slam> m_slam{nullptr};

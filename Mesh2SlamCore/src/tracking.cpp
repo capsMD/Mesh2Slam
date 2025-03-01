@@ -8,19 +8,16 @@ Tracking::Tracking(SlamParams* slamParams) : m_slamParams(slamParams)
 {
     m_trackingState = TrackingStates::NO_FRAME;;
     m_MVG.updateParams(m_slamParams);
-    initializeKMatrix();
 }
 
 Tracking::Tracking(std::shared_ptr<Map> map, SlamParams* slamParams) : m_map(map), m_slamParams(slamParams)
 {
     m_trackingState = TrackingStates::NO_FRAME;
     m_MVG.updateParams(m_slamParams);
-    m_minJumpFrames = static_cast<char>(m_slamParams->optimizationParams.minJumpFrames);
-    m_maxJumpFrames = static_cast<char>(m_slamParams->optimizationParams.maxJumpFrames);
-    initializeKMatrix();
+    m_minJumpFrames = m_slamParams->optimizationParams.minJumpFrames;
+    m_maxJumpFrames = m_slamParams->optimizationParams.maxJumpFrames;
 
 }
-
 bool Tracking::run(const VertexFeatures& vertexFeatures, const double currentTimestamp, unsigned long int mFrameCount)
 {
     bool ok = false;
@@ -134,10 +131,6 @@ bool Tracking::initialize()
             }
             else
                 Logger<std::string>::LogError("Failed to create map");
-        }
-        else
-        {
-            ;
         }
     }
     else
@@ -272,7 +265,6 @@ bool Tracking::createInitialMap()
 
     m_lastKFrameID = pCurrentFrame->getImageFrameNumber();
 
-    //m_mapper->updateViewer();
     return true;
 }
 
@@ -295,7 +287,6 @@ bool Tracking::trackNextFrame()
     //track using previous motion estimation
     if (m_trackWithMotion)
     {
-        //while(1);
         //set initial estimated pose of frame based on previous frame and motion
         m_newFrame.setPose(m_motion * m_oldFrame.getPosec());
         Logger<std::string>::LogInfoI("Next frame: " + std::to_string(m_newFrame.getID()) + " tracking with motion and projection method. ");
@@ -320,7 +311,7 @@ bool Tracking::trackNextFrame()
         {
             //BF match map point descriptors to new frame captured feature descriptors and perform pose estimation
             Logger<std::string>::LogInfoI("Now attempting tracking with motion and all-matches method: ");
-            size_t matches = Matcher::matchAndAddAll(m_newFrame, m_referenceFrame) > minMatches;
+            size_t matches = Matcher::matchAndAddAll(m_newFrame, m_referenceFrame);
             if (matches > minMatches)
             {
 
@@ -545,19 +536,6 @@ Tracking::~Tracking()
     }
 }
 
-void Tracking::initializeKMatrix()
-{
-    m_K = cv::Mat::eye(3, 3, CV_32F);
-
-    if (m_slamParams != nullptr)
-    {
-        m_K.at<float>(0, 0) = m_slamParams->camParams.fx;
-        m_K.at<float>(1, 1) = m_slamParams->camParams.fy;
-        m_K.at<float>(0, 2) = m_slamParams->camParams.cx;
-        m_K.at<float>(1, 2) = m_slamParams->camParams.cy;
-    }
-}
-
 bool Tracking::createNewFrame()
 {
 
@@ -760,4 +738,4 @@ void Tracking::convertGLM2CV(const glm::mat4 &glmMat, cv::Mat &cvMat)
 }
 
 
-#endif // !TRACKING_H
+#endif // TRACKING_H

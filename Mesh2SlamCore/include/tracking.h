@@ -44,8 +44,6 @@ public:
 	Tracking(SlamParams* slamParams);
 	Tracking(std::shared_ptr<Map> map, SlamParams* slamParams);
 	bool run(const VertexFeatures& vertexFeatures, const double timestamp, unsigned long int mFrameCounter);
-	TrackingStates getTrackingState() const { return m_trackingState; }
-	void setTrackingState(const TrackingStates state) { m_trackingState = state; }
 
     void removeFrame(Frame* frame);
     void setMapping(std::shared_ptr<Mapping> mapping);
@@ -54,7 +52,6 @@ public:
     void clearUpdateFlag();
     bool checkUpdateFlag(void) const {return m_frameUpdateFlag;}
     void convertGLM2CV(const glm::mat4& glmMat, cv::Mat& cvMat);
-    void setState(const TrackingStates& state) {m_trackingState = state;}
     void stopTracking(){ m_trackingState = TrackingStates::STOP_TRACKING;    Logger<std::string>::LogInfoI("Stopping Tracking.");}
 	std::vector<Frame*> getFrames() { return m_frameSequence; }
 	std::vector<TFrame*> getTFrames() { return m_tFrameSequence; }
@@ -79,10 +76,10 @@ private:
 
     unsigned long int m_lastKFrameID{0};
     unsigned long int m_trackFrameCnt{0};
-    char m_badTrackingCount{0};
+    size_t m_badTrackingCount{0};
 
-    char m_minJumpFrames{0};
-    char m_maxJumpFrames{0};
+    size_t m_minJumpFrames{0};
+    size_t m_maxJumpFrames{0};
 
     //initial point matches
 	std::vector<PtPair> m_prunedMatchesIdx;
@@ -102,7 +99,6 @@ private:
     std::vector<MapPoint*> m_localMapPoints;
 	MVG m_MVG;
 	std::vector<cv::Point3f> m_initP3Dw;
-	cv::Mat m_K;
 
     cv::Mat m_motion;
     bool m_trackWithMotion{false};

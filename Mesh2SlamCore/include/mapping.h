@@ -36,7 +36,6 @@ public:
     void setTracker(std::shared_ptr<Tracking> tracker);
     void setViewer(std::shared_ptr<Viewer> viewer);
     void setState(const MappingStates& mapState){m_mappingState = mapState;}
-    bool updateViewer();
     void stopMapping(void) {m_mappingState = MappingStates::STOP_MAPPING; m_stop = true;    Logger<std::string>::LogInfoI("Stopping Mapper.");}
 
 private:

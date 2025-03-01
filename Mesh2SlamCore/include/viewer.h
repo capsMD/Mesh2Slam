@@ -238,7 +238,6 @@ inline static glm::mat3 convertOrientation(const glm::mat3 &R, const glm::vec3 &
     M[0][abs(v[0])-1] = (v[0] < 0) ? -1 : 1;
     M[1][abs(v[1])-1] = (v[1] < 0) ? -1 : 1;
     M[2][abs(v[2])-1] = (v[2] < 0) ? -1 : 1;
-    glm::transpose(M);
     return R*M;
 }
 

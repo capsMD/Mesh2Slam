@@ -23,31 +23,31 @@ bool MVG::initializePoseAndMap
 
     auto& pKPts1 = previousFrame.getKeyPoints();
     auto& pKPts2 = currentFrame.getKeyPoints();
-    mKptsMatches = currentFrame.getFeatureMatches();
+    m_kptsMatches = currentFrame.getFeatureMatches();
 
     auto n1 = pKPts1.size();
     auto n2 = pKPts2.size();
-    auto n21= mKptsMatches.size();
+    auto n21= m_kptsMatches.size();
 
-    mKpts1.clear();
-    mKpts2.clear();
-    mKpts1 = std::vector<cv::Point2f >(n1,cv::Point2f (0,0));
-    mKpts2 = std::vector<cv::Point2f >(n2,cv::Point2f (0,0));
+    m_kpts1.clear();
+    m_kpts2.clear();
+    m_kpts1 = std::vector<cv::Point2f >(n1, cv::Point2f (0, 0));
+    m_kpts2 = std::vector<cv::Point2f >(n2, cv::Point2f (0, 0));
 
 
     //convert from keypts to points2f from both frames and use for initialization
     for(size_t i = 0; i<n1;i++)
-        mKpts1[i] = pKPts1[i].pt;
+        m_kpts1[i] = pKPts1[i].pt;
     for(size_t i = 0; i<n2;i++)
-        mKpts2[i] = pKPts2[i].pt;
+        m_kpts2[i] = pKPts2[i].pt;
 
 
     std::vector<std::vector<size_t> > indexSets;
-    if (!MVGUtils::generateRandomSets(8, n21, indexSets, mMaxTrials))
+    if (!MVGUtils::generateRandomSets(8, n21, indexSets, m_maxTrials))
         return false;
 
-    std::thread tH(&MVG::estimateHomography, this, std::ref(H), std::cref(mKpts1), std::cref(mKpts2), std::cref(mKptsMatches), std::cref(indexSets), std::ref(hScore), std::ref(inliersH));
-    std::thread tF(&MVG::estimateFundamental, this, std::ref(F), std::cref(mKpts1), std::cref(mKpts2), std::cref(mKptsMatches), std::cref(indexSets), std::ref(fScore), std::ref(inliersF));
+    std::thread tH(&MVG::estimateHomography, this, std::ref(H), std::cref(m_kpts1), std::cref(m_kpts2), std::cref(m_kptsMatches), std::cref(indexSets), std::ref(hScore), std::ref(inliersH));
+    std::thread tF(&MVG::estimateFundamental, this, std::ref(F), std::cref(m_kpts1), std::cref(m_kpts2), std::cref(m_kptsMatches), std::cref(indexSets), std::ref(fScore), std::ref(inliersF));
 
     tH.join();
     tF.join();
@@ -59,13 +59,13 @@ bool MVG::initializePoseAndMap
     bool reconstructionOk = false;
     if (RH > 0.40)
     {
-        mvInliersModel = inliersH;
-        reconstructionOk = MVG::reconstructFromHomography(H, mKpts1, mKpts2, R, t, p3D, prunedMatches);
+        m_inliersModel = inliersH;
+        reconstructionOk = MVG::reconstructFromHomography(H, m_kpts1, m_kpts2, R, t, p3D, prunedMatches);
     }
     else //if(pF_HF>0.6)
     {
-        mvInliersModel = inliersF;
-        reconstructionOk =MVG::reconstructFromFundamental(F, mKpts1, mKpts2, R, t, p3D, prunedMatches);
+        m_inliersModel = inliersF;
+        reconstructionOk =MVG::reconstructFromFundamental(F, m_kpts1, m_kpts2, R, t, p3D, prunedMatches);
     }
 
 
@@ -90,19 +90,19 @@ bool MVG::initializePoseAndMap
 void MVG::updateParams(SlamParams* slamParams)
 {
 	m_slamParams = slamParams;
-	mK.at<float>(0, 0) = m_slamParams->camParams.fx;
-	mK.at<float>(1, 1) = m_slamParams->camParams.fy;
-	mK.at<float>(0, 2) = m_slamParams->camParams.cx;
-	mK.at<float>(1, 2) = m_slamParams->camParams.cy;
+    m_K.at<float>(0, 0) = m_slamParams->camParams.fx;
+    m_K.at<float>(1, 1) = m_slamParams->camParams.fy;
+    m_K.at<float>(0, 2) = m_slamParams->camParams.cx;
+    m_K.at<float>(1, 2) = m_slamParams->camParams.cy;
 
-	mMinParallax			= m_slamParams->errorParams.minParallax;
-	mMinPassRatio			= m_slamParams->errorParams.minInlierRatio;
-	mReprojectionThreshold	= m_slamParams->errorParams.reprojectThreshold;
-	mMinTriangulations		= m_slamParams->errorParams.minTriangulations;
-	mMaxSecondPassRatio		= m_slamParams->errorParams.maxSecondPassRatio;
-	
-	mSamples				= m_slamParams->ransacParams.samples;
-	mMaxTrials				= m_slamParams->ransacParams.maxTrials;
+    m_minParallax			= m_slamParams->errorParams.minParallax;
+    m_minPassRatio			= m_slamParams->errorParams.minInlierRatio;
+    m_reprojectionThreshold	= m_slamParams->errorParams.reprojectThreshold;
+    m_minTriangulations		= m_slamParams->errorParams.minTriangulations;
+    m_maxSecondPassRatio		= m_slamParams->errorParams.maxSecondPassRatio;
+
+    m_samples				= m_slamParams->ransacParams.samples;
+    m_maxTrials				= m_slamParams->ransacParams.maxTrials;
 
 }
 
@@ -129,8 +129,8 @@ void MVG::estimateHomography(
 	cv::Mat T2inv = T2.inv();
 
 	//points to be sampled for each set
-	std::vector<cv::Point2f> samplePts1(mSamples, cv::Point2f(0.0f, 0.0f));
-	std::vector<cv::Point2f> samplePts2(mSamples, cv::Point2f(0.0f, 0.0f));
+	std::vector<cv::Point2f> samplePts1(m_samples, cv::Point2f(0.0f, 0.0f));
+	std::vector<cv::Point2f> samplePts2(m_samples, cv::Point2f(0.0f, 0.0f));
 
 	std::vector<bool> newInliers(mvMatches12.size(), false);
 	hScore = -1.0f;
@@ -138,10 +138,10 @@ void MVG::estimateHomography(
 	float newScore = 0.0f;
 
 	cv::Mat Htemp;
-	for (size_t i = 0; i < mMaxTrials; i++)
+	for (size_t i = 0; i < m_maxTrials; i++)
 	{
 		//fetch pre-randomized set of points
-		for (size_t j = 0; j < mSamples; j++)
+		for (size_t j = 0; j < m_samples; j++)
 		{
 			const size_t idx = indexSets[i][j];
 			samplePts1[j] = pts1N[mvMatches12[idx].first];
@@ -188,8 +188,8 @@ void MVG::estimateFundamental(
 	cv::Mat T2t = T2.t();
 
 	//points to be sampled for each set
-	std::vector<cv::Point2f> samplePts1(mSamples, cv::Point2f(0.0f, 0.0f));
-	std::vector<cv::Point2f> samplePts2(mSamples, cv::Point2f(0.0f, 0.0f));
+	std::vector<cv::Point2f> samplePts1(m_samples, cv::Point2f(0.0f, 0.0f));
+	std::vector<cv::Point2f> samplePts2(m_samples, cv::Point2f(0.0f, 0.0f));
 
 	std::vector<bool> newInliers(mvMatches12.size(), false);
 	fScore = -1.0f;
@@ -197,11 +197,11 @@ void MVG::estimateFundamental(
 	float newScore = 0.0f;
 
 	cv::Mat Ftemp;
-	for (size_t i = 0; i < mMaxTrials; i++)
+	for (size_t i = 0; i < m_maxTrials; i++)
 	{
 
 		//fetch pre-randomized set of points
-		for (size_t j = 0; j < mSamples; j++)
+		for (size_t j = 0; j < m_samples; j++)
 		{
 			const size_t idx = indexSets[i][j];
 			samplePts1[j] = pts1N[mvMatches12[idx].first];
@@ -545,7 +545,7 @@ bool MVG::reconstructFromHomography(
 	std::vector<cv::Mat> Ts;
 	std::vector<cv::Mat> Ns;
 
-	decomposeHomography(H, mK, Rs, Ts);
+	decomposeHomography(H, m_K, Rs, Ts);
 	return chooseRTSolution(Rs, Ts, pts1, pts2, R, t, p3D, prunedMatches);
 }
 
@@ -561,7 +561,7 @@ bool MVG::reconstructFromFundamental(
 	cv::Mat R1, R2;
 	cv::Mat t1, t2;
 
-	decomposeFundamental(F, mK, R1, R2, t1);
+	decomposeFundamental(F, m_K, R1, R2, t1);
 	t2 = -t1;
 
 	std::vector<cv::Mat> Rs{ R1,R2,R1,R2 };
@@ -586,11 +586,11 @@ bool MVG::chooseRTSolution(
         std::vector<PtPair>& prunedMatches)
 {
     size_t modelInliersCount =0;
-    for (size_t i = 0; i < mKptsMatches.size(); i++)
-        if (mvInliersModel[i])
+    for (size_t i = 0; i < m_kptsMatches.size(); i++)
+        if (m_inliersModel[i])
             modelInliersCount++;
 
-    const size_t nPoints = mKptsMatches.size();
+    const size_t nPoints = m_kptsMatches.size();
     const size_t nSolutions = Rs.size();
 	const float minParallax = m_slamParams->errorParams.minParallax;
 
@@ -605,10 +605,10 @@ bool MVG::chooseRTSolution(
     std::vector<int>score3Dpts(nSolutions, 0);
     std::vector<int>valid3DptsCount(nSolutions, 0);
 
-    const float fx = mK.at<float>(0, 0);
-    const float fy = mK.at<float>(1, 1);
-    const float cx = mK.at<float>(0, 2);
-    const float cy = mK.at<float>(1, 2);
+    const float fx = m_K.at<float>(0, 0);
+    const float fy = m_K.at<float>(1, 1);
+    const float cx = m_K.at<float>(0, 2);
+    const float cy = m_K.at<float>(1, 2);
 
     //cam1 matrix
     cv::Mat P1(3, 4, CV_32F, cv::Scalar(0));
@@ -627,7 +627,7 @@ bool MVG::chooseRTSolution(
 
         // Camera 1 Projection Matrix K[I|0]
         cv::Mat P1(3, 4, CV_32F, cv::Scalar(0));
-        mK.copyTo(P1.rowRange(0, 3).colRange(0, 3));
+        m_K.copyTo(P1.rowRange(0, 3).colRange(0, 3));
 
         //Camera 1 center in world coord. (in this case origin)
         cv::Mat C1 = cv::Mat::zeros(3, 1, CV_32F);
@@ -636,7 +636,7 @@ bool MVG::chooseRTSolution(
         cv::Mat P2(3, 4, CV_32F);
         Rj.copyTo(P2.rowRange(0, 3).colRange(0, 3));
         Tj.copyTo(P2.rowRange(0, 3).col(3));
-        P2 = mK * P2;
+        P2 = m_K * P2;
 
         //Camera2 center in world coord.
         cv::Mat C2 = -Rj.t() * Tj;
@@ -644,19 +644,19 @@ bool MVG::chooseRTSolution(
         if (cv::norm(C1-C2) <= 0.1)
             return false;
 
-        for (size_t i = 0; i < mKptsMatches.size(); i++)
+        for (size_t i = 0; i < m_kptsMatches.size(); i++)
         {
-            if (!mvInliersModel[i])
+            if (!m_inliersModel[i])
                 continue;
 
-            cv::Point2f pt1(pts1[mKptsMatches[i].first].x,  pts1[mKptsMatches[i].first].y);
-            cv::Point2f pt2(pts2[mKptsMatches[i].second].x, pts2[mKptsMatches[i].second].y);
+            cv::Point2f pt1(pts1[m_kptsMatches[i].first].x, pts1[m_kptsMatches[i].first].y);
+            cv::Point2f pt2(pts2[m_kptsMatches[i].second].x, pts2[m_kptsMatches[i].second].y);
 
 
             cv::Mat p3dC1;
 
             MVG::triangulate(P1, P2, pt1, pt2, p3dC1);
-            std::vector<float> p3D{p3dC1.at<float>(0),p3dC1.at<float>(2),p3dC1.at<float>(2)};
+            std::vector<float> p3D{p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2)};
 
             if (std::isinf(p3dC1.at<float>(0)) || std::isinf(p3dC1.at<float>(1)) || std::isinf(p3dC1.at<float>(2)))
             {
@@ -711,7 +711,7 @@ bool MVG::chooseRTSolution(
 
             //after all pruning, if point has enough cosParallax it is valid
             //1 is a value for parallel rays
-            if (cosParallax < mMinParallax)
+            if (cosParallax < m_minParallax)
             {
                 valid3DPtsi++;
                 valid3DPts[j][i] = true;
@@ -731,12 +731,12 @@ bool MVG::chooseRTSolution(
         //ignore these solutions
         float score = static_cast<float>(score3Dpts[j]) / static_cast<float>(modelInliersCount);
         Logger<std::string>::LogInfoI("initialization score: " + std::to_string(score));
-        if (score3Dpts[j] <= 0 || score3Dpts[j] < (mMinPassRatio * modelInliersCount))
+        if (score3Dpts[j] <= 0 || score3Dpts[j] < (m_minPassRatio * modelInliersCount))
             continue;
         else
         {
             //reject if more than 1 solution has high score
-            if (score3Dpts[j] > mMaxSecondPassRatio * bestScorePts)
+            if (score3Dpts[j] > m_maxSecondPassRatio * bestScorePts)
                 highScoreSolution++;
 
             if (highScoreSolution > 1)
@@ -745,18 +745,18 @@ bool MVG::chooseRTSolution(
                 return false;
             }
 
-            if (valid3DptsCount[j] > mMinTriangulations)
+            if (valid3DptsCount[j] > m_minTriangulations)
             {
                 //sort parallax for good solution
                 sort(vCosParallaxes[j].begin(), vCosParallaxes[j].end());
                 size_t idx = std::min(50, int(vCosParallaxes[j].size() - 1));
                 const float parallax = acosf(vCosParallaxes[j][idx]) * 180.0f / CV_PI;
-                if (parallax > mMinParallax)
+                if (parallax > m_minParallax)
                 {
                     Rs[j].copyTo(R);
                     Ts[j].copyTo(t);
                     p3Ds = vP3Ds[j];
-                    prunedMatches = mKptsMatches;
+                    prunedMatches = m_kptsMatches;
                     solutionFound = true;
 
 
@@ -863,10 +863,9 @@ void MVG::normalizePts(const std::vector<cv::Point2f>& inPts, std::vector<cv::Po
 	outPts = std::vector<cv::Point2f>(nPoints, cv::Point2f(0.0f, 0.0f));
 
 	//find centroid translation
-	size_t i = 0;
 	float centroidX = 0.0f;
 	float centroidY = 0.0f;
-	for (i; i < nPoints; i++)
+	for (size_t i = 0; i < nPoints; i++)
 	{
 		centroidX += inPts[i].x;
 		centroidY += inPts[i].y;
@@ -875,10 +874,9 @@ void MVG::normalizePts(const std::vector<cv::Point2f>& inPts, std::vector<cv::Po
 	centroidY /= nPoints;
 
 	//find average dist to centroid
-	i = 0;
 	float distCentroidX = 0.0f;
 	float distCentroidY = 0.0f;
-	for (i; i < nPoints; i++)
+	for (size_t i = 0; i < nPoints; i++)
 	{
 		distCentroidX += std::fabs(inPts[i].x - centroidX);
 		distCentroidY += std::fabs(inPts[i].y - centroidY);
@@ -902,8 +900,7 @@ void MVG::normalizePts(const std::vector<cv::Point2f>& inPts, std::vector<cv::Po
 	T.at<float>(2, 2) = 1;
 
 	//multiply all points
-	i = 0;
-	for (; i < nPoints; i++)
+	for (size_t i = 0; i < nPoints; i++)
 		outPts[i] = cv::Point2f((scaleX * inPts[i].x - scaleX * centroidX), (scaleY * inPts[i].y + -scaleY * centroidY));
 
 }
@@ -914,7 +911,6 @@ float MVGError::reprojectionError(const cv::Mat& T, const std::vector<cv::Point2
 	float error = 0.0f;
 
 	size_t nPts = mvMatches12.size();
-	size_t i = 0;
 	inliers = std::vector<bool>(nPts, false);
 
 	cv::Mat Tinv = T.inv();
@@ -948,7 +944,7 @@ float MVGError::reprojectionError(const cv::Mat& T, const std::vector<cv::Point2
 	float score12 = 0.0f;
 	float score21 = 0.0f;
 
-	for (i; i < nPts; i++)
+	for (size_t i = 0; i < nPts; i++)
 	{
 		//inlier or not
 		bool isInlier = true;
@@ -1005,7 +1001,6 @@ float MVGError::epipolarLineError(const cv::Mat& T, const std::vector<cv::Point2
 
 
 	size_t nPts = mvMatches12.size();
-	size_t i = 0;
 	inliers = std::vector<bool>(nPts, false);
 
 	//reprojection errors from pt1 to image2 and vice-versa
@@ -1028,7 +1023,7 @@ float MVGError::epipolarLineError(const cv::Mat& T, const std::vector<cv::Point2
 
 
 
-	for (i; i < nPts; i++)
+	for (size_t i = 0; i < nPts; i++)
 	{
 		//inlier or not
 		bool isInlier = true;
@@ -1102,25 +1097,9 @@ bool MVGUtils::generateRandomSets(size_t nElements, size_t indexRange, std::vect
 	if (nElements > indexRange)
 		return false;
 
-	//random sets cap: 1000000
 	size_t possibleSets = 0;
 
-	//Prohibitive:
-	//figure out how many sets possible to generate
-	//C(n, k) = n!/ (k!*(n - k)!)
-	//nCap = 12...
-	//if (indexRange <= 12)
-	//{
-	//	possibleSets = 
-	//	MVGUtils::factorial(indexRange)/
-	//	(MVGUtils::factorial(nElements) * (MVGUtils::factorial(indexRange - nElements)));
-	//}
-
-	//nSets = (possibleSets < nSets) ? nSets : possibleSets;
-
-
-	size_t i = 0;
-	for (i; i < nSets; i++)
+	for (size_t i = 0; i < nSets; i++)
 	{
 		std::set<size_t> indexSet;
 		generateRandomIndexes(0, indexRange, indexSet, nElements);
@@ -1128,7 +1107,7 @@ bool MVGUtils::generateRandomSets(size_t nElements, size_t indexRange, std::vect
 		sets.push_back(setToVector);
 	}
 
-	return (i > 0);
+	return (nSets > 0);
 }
 
 void MVGUtils::generateRandomIndexes(size_t start, size_t end, std::set<size_t>& indexes, size_t numberOfIndexes)

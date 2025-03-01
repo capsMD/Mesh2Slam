@@ -2,34 +2,62 @@
 
 Slam::Slam(SlamParams* params, AAssetManager *assetManager) : m_slamParams(params), m_assetManager(assetManager)
 {
+    bool initializationOk = true;
     m_slamState = RUNNING;
 
-    //initialize slam main objects and threads
-    m_map =  std::make_shared<Map>();
-    m_tracker = std::make_shared<Tracking>(m_map, m_slamParams);
-    assert(m_tracker != nullptr && "Tracker initialization failed");
-    Logger<std::string>::LogInfoI("tracker initialized.");
+    try {
+        m_map = std::make_shared<Map>();
+        if (!m_map) {
+            Logger<std::string>::LogError("map initialization failed.");
+            initializationOk = false;
+        }
+        Logger<std::string>::LogInfoI("map initialized.");
 
-    bool runViewer = static_cast<bool>(m_slamParams->viewerParams.runViewer);
-    m_viewer = std::make_shared<Viewer>(m_slamParams, assetManager);
-    assert(m_viewer != nullptr && "Viewer initialization failed");
-    m_viewer->setMap(m_map);
-    m_viewer->initialize();
-    Logger<std::string>::LogInfoI("viewer initialized.");
+        m_tracker = std::make_shared<Tracking>(m_map, m_slamParams);
+        if (!m_tracker) {
+            Logger<std::string>::LogError("tracker initialization failed.");
+            initializationOk = false;
+        }
+        Logger<std::string>::LogInfoI("tracker initialized.");
 
-    m_mapper = std::make_shared<Mapping>(m_map, m_slamParams);
-    assert(m_mapper != nullptr && "Mapper initialization failed");
-    m_mappingThread = std::make_shared<std::thread>(&Mapping::run, m_mapper);
-    Logger<std::string>::LogInfoI("mapper initialized.");
+        m_viewer = std::make_shared<Viewer>(m_slamParams, assetManager);
+        if (!m_viewer) {
+            Logger<std::string>::LogError("viewer initialization failed.");
+            initializationOk = false;
+        }
+        m_viewer->setMap(m_map);
+        m_viewer->initialize();
+        Logger<std::string>::LogInfoI("viewer initialized.");
 
-    //set pointers
-    m_tracker->setMapping(m_mapper);
-    m_tracker->setViewer(m_viewer);
-    m_mapper->setTracker(m_tracker);
-    m_mapper->setViewer(m_viewer);
+        m_mapper = std::make_shared<Mapping>(m_map, m_slamParams);
+        if (!m_mapper) {
+            Logger<std::string>::LogError("mapper initialization failed.");
+            initializationOk = false;
+        }
+        Logger<std::string>::LogInfoI("mapper initialized.");
 
-    //give enough time for initializations (probably not needed)
-    std::this_thread::sleep_for(std::chrono::milliseconds (200));
+        if (!initializationOk) {
+            m_slamState = SlamState::STOPPED;
+            Logger<std::string>::LogError("SLAM initialization failed due to one or more components.");
+            throw std::runtime_error("SLAM initialization failed");
+        }
+
+        // Set pointers only if all components are initialized
+        m_tracker->setMapping(m_mapper);
+        m_tracker->setViewer(m_viewer);
+        m_mapper->setTracker(m_tracker);
+        m_mapper->setViewer(m_viewer);
+
+        m_mappingThread = std::make_shared<std::thread>(&Mapping::run, m_mapper);
+        Logger<std::string>::LogInfoI("Mapping thread started.");
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Optional
+    } catch (const std::exception& e)
+    {
+        m_slamState = SlamState::STOPPED;
+        Logger<std::string>::LogError("Exception during SLAM initialization: " + std::string(e.what()));
+        throw; // Re-throw to caller
+    }
 }
 
 void Slam::processFrame(const VertexFeatures& vertexFeatures)
@@ -68,7 +96,13 @@ void Slam::run()
 void Slam::shutdown()
 {
     m_slamState = SlamState::STOPPED;
-
+    m_tracker->stopTracking();
+    m_mapper->stopMapping();
+    {
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+        m_frameAvailable = true;
+        m_frameCondVariable.notify_one();
+    }
     if (m_mappingThread && m_mappingThread->joinable())
     {
         m_mappingThread->join();
@@ -101,67 +135,61 @@ void Slam::stopSLAM()
 {
     Logger<std::string>::LogInfoI("Stopping SLAM...");
     m_slamState = SlamState::STOPPED;
+
     m_stop = true;
-
-
     m_tracker->stopTracking();
     m_mapper->stopMapping();
+
+    {
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+        m_frameAvailable = true;
+        m_frameCondVariable.notify_one();
+    }
 
     if (m_mappingThread && m_mappingThread->joinable())
     {
         m_mappingThread->join();
         Logger<std::string>::LogInfoI("Mapper thread terminated.");
     }
-
     m_viewer->stopViewer();
-
 }
-
 
 bool SlamManager::initializeSLAM()
 {
-    bool okay = true;
+    bool initializationOk = true;
 
-    if(m_slamParams != nullptr)
+    if(m_slamParams == nullptr)
+    {
+        Logger<std::string>::LogError("SLAM parameters not found.");
+        initializationOk = false;
+    }
+
+    try
     {
         std::cout << "creating SLAM instances." << std::endl;
-
         m_slam = std::make_shared<Slam>(m_slamParams, m_assetManager);
-
+    }
+    catch(const std::exception &e)
+    {
+        Logger<std::string>::LogError("Failed to initialize SLAM.");
+        initializationOk = false;
     }
 
-    if(okay)
+    if(initializationOk)
     {
-        m_slamInitialized = okay;
+        m_slamInitialized.store(true);
         m_slamThread = std::make_shared<std::thread>(&Slam::run, m_slam);
     }
-    return okay;
+    return initializationOk;
 }
-
 
 void SlamManager::updateFrame()
 {
     if((m_slamInitialized) && (m_slam->getSlamState() == SlamState::RUNNING))
     {
-        // cv::Mat displayImage;
-        // displayImage = cv::Mat(m_slamParams->viewerParams.width, m_slamParams->viewerParams.height, CV_8UC3, cv::Scalar(0, 0, 0));
-
-        //fetch: projection of vertexes as features (id + uv coord.) and the virtual cam position (used for scale ambiguity)
         VertexFeatures vertexFeatures;
-        //if(m_camManager->GetvertexFeatures(vertexFeatures))
         if(m_slam->getViewer()->renderVtxFeatures(vertexFeatures))
-        {
-            //std::cout << "vtx features: " << std::to_string(vertexFeatures.m_pts.size()) << std::endl;
-            // for(auto& pt : vertexFeatures.m_pts)
-            //     displayImage.at<cv::Vec3b>(pt.y, pt.z) = cv::Vec3b(255.0f, 255.0f, 255.0f);
-            // cv::imshow("cam display",displayImage);
-            // cv::waitKey(1);
-            // Logger<std::string>::LogInfoI("vertices: " + std::to_string(vertexFeatures.m_pts.size()));
             m_slam->processFrame(vertexFeatures);
-        }
-
-        //update slam viewer map
-        //m_slam->updateViewer();
     }
 }
 
@@ -178,8 +206,7 @@ void SlamManager::stopSLAM()
     Logger<std::string>::LogInfoI("Slam running rendering-only mode.");
     if (m_slamThread && m_slamThread->joinable())
     {
-        //Logger<std::string>::LogInfoI("Slam Thread terminated.");
-        //m_slamThread->join();
+        m_slamThread->join();
     }
 }
 

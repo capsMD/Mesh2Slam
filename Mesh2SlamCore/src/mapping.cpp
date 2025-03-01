@@ -84,7 +84,7 @@ void Mapping::run()
                 //perform local BA (around the new frame)
 
                 if (m_map->getFrames().size() > 2)
-                    Optimizer::bundleAdjust(m_map, m_newFrame, &stop, m_slamParams);
+                    Optimizer::localBA(m_map, m_newFrame, &stop, m_slamParams);
 
                 auto timerEndBA = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> BADuration = timerEndBA - timerStartBA;
@@ -176,7 +176,8 @@ void Mapping::run()
         //1- Computes F from both camera poses (new frame and its connected frames)
         //2- Checks Keypoints (all keypoints, O(N^2)) from both frames, if small epipolar distance (using F)
         //3- Triangulate close points and create new map points
-        const float maxDepth = m_slamParams->featureParams.maxMapPointDist;
+        static const float maxDepth         = m_slamParams->mapPointParams.maxPointDistance;
+        static const int   maxNewMapPoints  = m_slamParams->mapPointParams.maxNewPoints;
 
         struct MapPointData
         {
@@ -261,15 +262,6 @@ void Mapping::run()
                     size_t idx1 = matchedFeatures[i].first;
                     size_t idx2 = matchedFeatures[i].second;
 
-                    if(mps1[idx1] != nullptr)
-                    {
-                        Logger<std::string>::LogError("Map point already exists!");
-                    }
-                    if(mps2[idx2] != nullptr)
-                    {
-                        Logger<std::string>::LogError("Map point already exists!");
-                    }
-
                     cv::KeyPoint kp1 = kpts1[idx1];
                     cv::KeyPoint kp2 = kpts2[idx2];
 
@@ -340,16 +332,6 @@ void Mapping::run()
                     size_t descriptor = m_newFrame->getSimDescriptors()[idx1];
                     preMapPoints.emplace_back(p3D, descriptor,(e1+e2/2.0f),idx1,idx2,connectedFrame);
 
-                    // MapPoint* mapPoint = new MapPoint(p3D, m_newFrame, m_map, descriptor);
-                    // mapPoint->setError((e1+e2/2.0f));
-                    // mapPoint->addFrameView(m_newFrame, idx1);
-                    // mapPoint->addFrameView(connectedFrame,idx2);
-                    //
-                    // m_newFrame->addMapPoint(mapPoint, idx1);
-                    // connectedFrame->addMapPoint(mapPoint,idx2);
-                    //
-                    // m_map->addMapPoint(mapPoint);
-                    // m_newMapPoints.push_back(mapPoint);
                     nMapPoints++;
                 }
             }
@@ -374,7 +356,7 @@ void Mapping::run()
                 m_map->addMapPoint(mapPoint);
                 m_newMapPoints.push_back(mapPoint);
                 counter++;
-                if(counter >= 50)
+                if(counter >= maxNewMapPoints)
                     break;
             }
         }
@@ -426,8 +408,6 @@ void Mapping::run()
             Frame* targetFrame = *it;
 
             nMatches = Matcher::fuseByProjection(targetFrame, mapPoints, matches);
-            if(nMatches > 0);
-            //std::cout << "Matches to fuse: frame " + std::to_string(m_newFrame->getID()) + " and frame " + std::to_string(targetFrame->getID()) + ", matches: " + std::to_string(nMatches) << std::endl;
         }
 
         nMatches = 0;
@@ -452,9 +432,8 @@ void Mapping::run()
             }
         }
         nMatches = Matcher::fuseByProjection(m_newFrame, targetMapPoints, matches);
-        if(nMatches > 0);
-        //std::cout << "Matches to fuse: frame " + std::to_string(m_newFrame->getID()) + ", matches: " + std::to_string(nMatches) << std::endl;
-
+        if(nMatches > 0)
+            return true;
         return false;
     }
 
@@ -542,10 +521,5 @@ void Mapping::run()
     void Mapping::setViewer(std::shared_ptr<Viewer> viewer)
     {
         m_viewer = viewer;
-    }
-
-    bool Mapping::updateViewer()
-    {
-        //m_viewer->update();
     }
 

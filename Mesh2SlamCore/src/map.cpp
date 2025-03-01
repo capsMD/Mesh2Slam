@@ -1,7 +1,4 @@
 #include "map.h"
-#pragma once
-
-#include <mutex>
 
 void Map::addMapPoint(MapPoint* point)
 {

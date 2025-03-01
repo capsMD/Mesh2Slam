@@ -34,9 +34,8 @@ public:
 	Map(SlamParams* slamParams);
     ~Map() {}
 
-	//void insertKeyFrame(KeyFrame* keyframe);
-	void insertFrame(Frame* frame); //temporary, when all frames are keyframes
-	void insertTFrame(TFrame* frame); //temporary, when all frames are keyframes
+	void insertFrame(Frame* frame);
+	void insertTFrame(TFrame* frame);
 	void removeFrame(Frame* frame);
     void addMapPoint(MapPoint* map);
     void removeMapPoint(MapPoint* mapPoint);

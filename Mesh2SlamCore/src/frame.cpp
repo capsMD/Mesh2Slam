@@ -7,9 +7,6 @@ float Frame::m_invHeightScale;
 Frame::Frame(const VertexFeatures &vertexFeatures, double timestamp, unsigned long int frameCount, SlamParams* slamParams) :
         m_virtualCamPose(vertexFeatures.m_pose), m_timeStamp(timestamp), m_ID(frameCount), m_slamParams(slamParams), N(vertexFeatures.m_pts.size()), m_camParams(slamParams)
 {
-    if(N == 0)
-        return;
-
     m_keyPoints.reserve(N);
     m_vtxDescriptors.reserve(N);
 
@@ -25,6 +22,27 @@ Frame::Frame(const VertexFeatures &vertexFeatures, double timestamp, unsigned lo
 
     initialize();
 }
+
+void Frame::initialize()
+{
+
+    m_posec = cv::Mat::eye (4, 4, CV_32F);
+    m_Rc = cv::Mat::eye (3, 3, CV_32F);
+    m_Tc = cv::Mat::zeros(3, 1, CV_32F);
+    m_posew = cv::Mat::eye (4, 4, CV_32F);
+    m_Rw = cv::Mat::eye (3, 3, CV_32F);
+    m_Tw = cv::Mat::zeros(3, 1, CV_32F);
+    m_searchRadius = m_slamParams->featureParams.searchRadius;
+    setMatricesD();
+
+
+    m_invWidthScale = static_cast<float>(GRID_COLS) / static_cast<float>(m_camParams.width);
+    m_invHeightScale = static_cast<float>(GRID_ROWS) / static_cast<float>(m_camParams.height);
+
+    setFeaturesIdx2Grid();
+    m_initialized = true;
+}
+
 
 bool Frame::MatchWithFrame(Frame& otherFrame)
 {
@@ -47,7 +65,7 @@ bool Frame::MatchWithFrame(Frame& otherFrame)
         }
 
         //check number of matches
-        if(nMatches > minMatches)
+        if(nMatches >= minMatches)
             return true;
         return false;
 
@@ -150,7 +168,7 @@ void Frame::setConnections()
             (fCounterIT->first)->addConnection(this,fCounterIT->second);
         }
     }
-    if(vPairs.empty())
+    if(vPairs.empty() && mostMapPointViews != nullptr)
     {
         vPairs.push_back(std::make_pair(maxMapPointViews,mostMapPointViews));
         mostMapPointViews->addConnection(this,maxMapPointViews);
@@ -171,13 +189,13 @@ void Frame::setConnections()
 
         //Add information about connection, connected keyframes their corresponding weights in descending order
         // mspConnectedKeyFrames = spConnectedKeyFrames;
-        m_connetionWeights = frameConnectionWeights;
-        m_OrderedConnectedFrames = std::vector<Frame*>(connectedFrames.begin(), connectedFrames.end());
+        m_connectionWeights = frameConnectionWeights;
+        m_orderedConnectedFrames = std::vector<Frame*>(connectedFrames.begin(), connectedFrames.end());
         m_orderedConnectedWeights = std::vector<int>(connectedWeights.begin(), connectedWeights.end());
 
         if(m_firstConnection && m_ID != 0)
         {
-            m_parent = m_OrderedConnectedFrames.front();
+            m_parent = m_orderedConnectedFrames.front();
             m_parent->addChild(this);
             m_firstConnection = false;
         }
@@ -192,11 +210,11 @@ void Frame::addConnection(Frame *pFrame, const int &weight)
 {
     {
         std::unique_lock<std::mutex> lock(m_mutexConnections);
-        if(!m_connetionWeights.count(pFrame))
-            m_connetionWeights[pFrame]=weight;
+        if(!m_connectionWeights.count(pFrame))
+            m_connectionWeights[pFrame]=weight;
 
-        else if(m_connetionWeights[pFrame] != weight)
-            m_connetionWeights[pFrame]=weight;
+        else if(m_connectionWeights[pFrame] != weight)
+            m_connectionWeights[pFrame]=weight;
         else
             return;
     }
@@ -269,25 +287,6 @@ void Frame::setMatricesD()
 
 }
 
-void Frame::initialize()
-{
-
-    m_posec = cv::Mat::eye (4, 4, CV_32F);
-    m_Rc = cv::Mat::eye (3, 3, CV_32F);
-    m_Tc = cv::Mat::zeros(3, 1, CV_32F);
-    m_posew = cv::Mat::eye (4, 4, CV_32F);
-    m_Rw = cv::Mat::eye (3, 3, CV_32F);
-    m_Tw = cv::Mat::zeros(3, 1, CV_32F);
-    m_searchRadius = m_slamParams->featureParams.searchRadius;
-    setMatricesD();
-
-
-    m_invWidthScale = static_cast<float>(GRID_COLS) / static_cast<float>(m_camParams.width);
-    m_invHeightScale = static_cast<float>(GRID_ROWS) / static_cast<float>(m_camParams.height);
-
-    setFeaturesIdx2Grid();
-    m_initialized = true;
-}
 
 void Frame::setFeaturesIdx2Grid()
 {
@@ -343,16 +342,16 @@ std::vector<size_t> Frame::getFeaturesIdxFromGrid(const cv::Point2i &imagePt)
 std::vector<Frame *> Frame::getConnectedFrames()
 {
     std::unique_lock<std::mutex> lock(m_mutexConnections);
-    return m_OrderedConnectedFrames;
+    return m_orderedConnectedFrames;
 }
 
 std::vector<Frame *> Frame::getNConnectedFrames(const int N)
 {
     std::unique_lock<std::mutex> lock(m_mutexConnections);
-    if(m_OrderedConnectedFrames.size() < N)
-        return m_OrderedConnectedFrames;
+    if(m_orderedConnectedFrames.size() < N)
+        return m_orderedConnectedFrames;
     else
-        return std::vector<Frame*>(m_OrderedConnectedFrames.begin(), m_OrderedConnectedFrames.begin() + N);
+        return std::vector<Frame*>(m_orderedConnectedFrames.begin(), m_orderedConnectedFrames.begin() + N);
 }
 
 float Frame::computeMedianDepth()
@@ -394,7 +393,7 @@ bool Frame::removeMapPoint(MapPoint *mapPoint)
     std::unique_lock<std::mutex> lock(m_mutexFeatures);
     if(mapPoint->getFrameViews().count(this))
     {
-        size_t idx = mapPoint->getFrameViews()[this];
+        size_t idx = mapPoint->getFrameViews().at(this);
         m_mapPoints[idx] = nullptr;
         return true;
     }
@@ -411,7 +410,6 @@ bool Frame::removeMapPoint(const size_t idx)
     }
     return false;
 }
-
 
 bool Frame::checkReprojectionError()
 {
@@ -446,7 +444,7 @@ bool Frame::checkReprojectionError()
         nCnt++;
     }
 
-    if(nBad>nCnt > 0.05f)
+    if (nCnt > 0 && static_cast<float>(nBad) / nCnt > 0.1f)
         return false;
     return true;
 }
@@ -519,7 +517,7 @@ void Frame::removeFrame()
 
 
     //iterate through connected frame weights and remove self from that
-    for(std::map<Frame*,int>::iterator it = m_connetionWeights.begin(), itEnd = m_connetionWeights.end(); it != itEnd; it++)
+    for(std::map<Frame*,int>::iterator it = m_connectionWeights.begin(), itEnd = m_connectionWeights.end(); it != itEnd; it++)
         it->first->removeConnection(this);
 
     //for every map point seen from this frame, remove this frame view
@@ -542,7 +540,7 @@ void Frame::removeFrame()
         std::unique_lock<std::mutex> lockFeatures(m_mutexFeatures);
 
         //clear stored connected frames and respective weights
-        m_OrderedConnectedFrames.clear();
+        m_orderedConnectedFrames.clear();
         m_orderedConnectedWeights.clear();
 
         std::set<Frame*> parentCandidates;
@@ -616,13 +614,14 @@ void Frame::removeFrame()
         if(m_parent != nullptr)
             m_parent->removeChild(this);
     }
+
 }
 
 int Frame::getConnectedWeight(Frame *frame)
 {
     std::unique_lock<std::mutex> lock(m_mutexConnections);
-    if(m_connetionWeights.count(frame))
-        return m_connetionWeights[frame];
+    if(m_connectionWeights.count(frame))
+        return m_connectionWeights[frame];
     else
         return 0;
 }
@@ -639,9 +638,9 @@ void Frame::removeConnection(Frame* frame)
     bool needUpdate = false;
     {
         std::unique_lock<std::mutex> lock(m_mutexConnections);
-        if (m_connetionWeights.count(frame))
+        if (m_connectionWeights.count(frame))
         {
-            m_connetionWeights.erase(frame);
+            m_connectionWeights.erase(frame);
             needUpdate = true;
         }
     }
@@ -655,8 +654,8 @@ void Frame::updateConnections()
     {
         std::unique_lock<std::mutex> lock(m_mutexConnections);
         std::vector<std::pair<int, Frame *> > frameWeights;
-        frameWeights.reserve(m_connetionWeights.size());
-        for (std::map<Frame *, int>::iterator it = m_connetionWeights.begin(), itEnd = m_connetionWeights.end();
+        frameWeights.reserve(m_connectionWeights.size());
+        for (std::map<Frame *, int>::iterator it = m_connectionWeights.begin(), itEnd = m_connectionWeights.end();
              it != itEnd; it++)
             frameWeights.push_back(std::make_pair(it->second, it->first));
 
@@ -669,7 +668,7 @@ void Frame::updateConnections()
             connectedWeights.push_front(frameWeights[i].first);
         }
 
-        m_OrderedConnectedFrames = std::vector<Frame *>(connectedFrames.begin(), connectedFrames.end());
+        m_orderedConnectedFrames = std::vector<Frame *>(connectedFrames.begin(), connectedFrames.end());
         m_orderedConnectedWeights = std::vector<int>(connectedWeights.begin(), connectedWeights.end());
     }
 
@@ -702,11 +701,11 @@ Frame::Frame(const Frame& other)
           m_descriptor_idx(other.m_descriptor_idx),
           m_matches(other.m_matches),
           m_initMatches(other.m_initMatches),
-          m_OrderedConnectedFrames(other.m_OrderedConnectedFrames),
+          m_orderedConnectedFrames(other.m_orderedConnectedFrames),
           m_orderedConnectedWeights(other.m_orderedConnectedWeights),
           m_firstConnection(other.m_firstConnection),
           m_parent(other.m_parent),
-          m_connetionWeights(other.m_connetionWeights),
+          m_connectionWeights(other.m_connectionWeights),
           m_children(other.m_children),
           m_Rc(other.m_Rc.clone()),
           m_Tc(other.m_Tc.clone()),
@@ -748,11 +747,11 @@ Frame::Frame(const Frame* other) {
     m_descriptor_idx = other->m_descriptor_idx;
     m_matches = other->m_matches;
     m_initMatches = other->m_initMatches;
-    m_OrderedConnectedFrames = other->m_OrderedConnectedFrames;
+    m_orderedConnectedFrames = other->m_orderedConnectedFrames;
     m_orderedConnectedWeights = other->m_orderedConnectedWeights;
     m_firstConnection = other->m_firstConnection;
     m_parent = other->m_parent;
-    m_connetionWeights = other->m_connetionWeights;
+    m_connectionWeights = other->m_connectionWeights;
     m_children = other->m_children;
     m_Rc = other->m_Rc.clone();
     m_Tc = other->m_Tc.clone();
@@ -794,11 +793,11 @@ Frame& Frame::operator=(const Frame& other) {
         m_descriptor_idx = other.m_descriptor_idx;
         m_matches = other.m_matches;
         m_initMatches = other.m_initMatches;
-        m_OrderedConnectedFrames = other.m_OrderedConnectedFrames;
+        m_orderedConnectedFrames = other.m_orderedConnectedFrames;
         m_orderedConnectedWeights = other.m_orderedConnectedWeights;
         m_firstConnection = other.m_firstConnection;
         m_parent = other.m_parent;
-        m_connetionWeights = other.m_connetionWeights;
+        m_connectionWeights = other.m_connectionWeights;
         m_children = other.m_children;
         m_Rc = other.m_Rc.clone();
         m_Tc = other.m_Tc.clone();
@@ -841,11 +840,11 @@ Frame& Frame::operator=(const Frame* other) {
     m_descriptor_idx = other->m_descriptor_idx;
     m_matches = other->m_matches;
     m_initMatches = other->m_initMatches;
-    m_OrderedConnectedFrames = other->m_OrderedConnectedFrames;
+    m_orderedConnectedFrames = other->m_orderedConnectedFrames;
     m_orderedConnectedWeights = other->m_orderedConnectedWeights;
     m_firstConnection = other->m_firstConnection;
     m_parent = other->m_parent;
-    m_connetionWeights = other->m_connetionWeights;
+    m_connectionWeights = other->m_connectionWeights;
     m_children = other->m_children;
     m_Rc = other->m_Rc.clone();
     m_Tc = other->m_Tc.clone();
@@ -888,8 +887,8 @@ void TFrame::updateTransform()
 
     m_Rw = m_Rc.t();
     m_Tw = -m_Rw * m_Tc;
-    m_Rw.copyTo(m_Posew.rowRange(0, 3).colRange(0, 3));
-    m_Tw.copyTo(m_Posew.rowRange(0, 3).col(3));
+    m_Rw.copyTo(m_posew.rowRange(0, 3).colRange(0, 3));
+    m_Tw.copyTo(m_posew.rowRange(0, 3).col(3));
 
     setMatricesD();
 }
@@ -917,13 +916,13 @@ void TFrame::setMatricesD()
 
 void TFrame::initialize()
 {
-    m_Rc = cv::Mat(3, 3, CV_32F);
-    m_Tc = cv::Mat(3, 1, CV_32F);
-    m_posec = cv::Mat(4, 4, CV_32F);
+    m_Rc = cv::Mat::eye(3, 3, CV_32F);
+    m_Tc = cv::Mat::zeros(3, 1, CV_32F);
+    m_posec = cv::Mat::eye(4, 4, CV_32F);
 
-    m_Rw = cv::Mat(3, 3, CV_32F);
-    m_Tw = cv::Mat(3, 1, CV_32F);
-    m_Posew = cv::Mat(4, 4, CV_32F);
+    m_Rw = cv::Mat::eye(3, 3, CV_32F);
+    m_Tw = cv::Mat::zeros(3, 1, CV_32F);
+    m_posew = cv::Mat::eye(4, 4, CV_32F);
 
     m_vR = std::vector<std::vector<float> > (m_Rc.rows, std::vector<float>(m_Rc.cols));
     m_vT = std::vector<std::vector<float> > (m_Tc.rows, std::vector<float>(m_Tc.cols));
@@ -1341,6 +1340,11 @@ int Matcher::matchOldFrames(Frame *newFrame, std::vector<Frame *> &oldFrames, si
         }
     }
 
-    bestFrame = oldFrames[bestMatchIndex];
-    return matchAndAddAll(*newFrame,bestFrame);
+    if(bestMatchFound)
+    {
+        bestFrame = oldFrames[bestMatchIndex];
+        return matchAndAddAll(*newFrame, bestFrame);
+    }
+
+    return 0;
 }
