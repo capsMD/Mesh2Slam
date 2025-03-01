@@ -1,0 +1,97 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Source image input Parameters
+#--------------------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters.
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV)
+Camera.fx: 1024
+Camera.fy: 1024
+Camera.cx: 1024
+Camera.cy: 1024
+
+Camera.k1: 0.0
+Camera.k2: 0.0
+Camera.p1: 0.0
+Camera.p2: 0.0
+
+Camera.w: 2048
+Camera.h: 2048
+
+# Camera frames per second
+Camera.fps: 30.0
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 1
+
+
+#--------------------------------------------------------------------------------------------
+# Optimization Parameters
+#--------------------------------------------------------------------------------------------
+
+Optimization.BAIterations1: 30
+Optimization.BAIterations2: 10
+Optimization.GBAIterations: 50
+Optimization.PNPIterations: 30
+Optimization.SearchN: 5
+#Optimization.minJumpFrames: 10
+#Optimization.minJumpFrames: 5
+Optimization.minJumpFrames: 0
+Optimization.maxJumpFrames: 20
+Optimization.GBAJumpFrames: 200
+Optimization.minDisplacement: 0.1
+#--------------------------------------------------------------------------------------------
+# Feature Parameters
+#--------------------------------------------------------------------------------------------
+Feature.maxFeatures: 1000
+Feature.minFeatures: 100
+Feature.minMatches:  10
+Feature.maxMatches:  80
+Feature.pruneDist:   10
+Feature.minRefFrameMatches: 10
+Feature.searchRadius: 200
+Feature.minTracked: 10
+Feature.maxMapPointDist: 60
+#--------------------------------------------------------------------------------------------
+# Ransac Parameters
+#--------------------------------------------------------------------------------------------
+
+Ransac.maxTrials: 1000
+Ransac.threshold:  2.0
+Ransac.confidence: 0.99
+Ransac.samples: 8
+
+
+#--------------------------------------------------------------------------------------------
+# Error Parameters
+#--------------------------------------------------------------------------------------------
+Error.maxBadTrackCnt: 3
+Error.minInlierRatio: 0.25
+Error.minParallax: 0.9
+Error.reprojectThreshold: 4
+Error.minTriangulations: 50
+Error.maxSecondPassRatio: 0.8
+Error.maxBBRepDist: 100
+#--------------------------------------------------------------------------------------------
+# viewer Parametersaaaaaaaaa
+#--------------------------------------------------------------------------------------------
+Viewer.runViewer: 1
+Viewer.forceOriginStart: 1
+Viewer.width: 2048
+Viewer.height: 2048
+Viewer.scaleFactor: 0.1
+Viewer.frameColor: [0.0,1.0,0.0]
+Viewer.tframeColor: [1.0,1.0,1.0]
+Viewer.framePathColor: [0.2,0.2,0.2]
+Viewer.pointCloudColor: [1.0,0.0,0.0]
+Viewer.meshColor: [1.0,1.0,1.0]
+Viewer.title: WIP
+Viewer.mouseMoveFactor: 1
+Viewer.fov: 90
+Viewer.far: 1000
+Viewer.near: 1
+Viewer.featuresMaxDepth: 100
