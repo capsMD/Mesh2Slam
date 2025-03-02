@@ -1,0 +1,143 @@
+newmtl ChairZaisuSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.15 0.15 0.15
+Tf 1.00 1.00 1.00
+map_Kd Texture1024.png
+Ni 1.00
+Ks 0.20 0.20 0.20
+Ns 0.00
+newmtl Old_Dusty_BookshelfSG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd books.jpg
+Ni 1.00
+Ks 0.20 0.20 0.20
+Ns 18.00
+newmtl blinn2SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.15 0.15 0.15
+Tf 1.00 1.00 1.00
+map_Kd -s_0.166667_0.0833333_wood4.jpg
+Ni 1.00
+Ks 0.50 0.50 0.50
+newmtl blinn4SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd metal.jpg
+Ni 1.00
+Ks 0.50 0.50 0.50
+newmtl blinn5SG
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.50 0.50 0.50
+newmtl initialShadingGroup
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.16 0.16 0.16
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl lambert4SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.10 0.10 0.10
+Tf 1.00 1.00 1.00
+map_Kd -s_0.125_0.125_fabric3.jpg
+Ni 1.00
+newmtl lambert5SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd fabric4.jpg
+Ni 1.00
+newmtl lambert6SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd -s_0.2_0.2_fabric2.jpg
+Ni 1.00
+newmtl lambert7SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd -s_0.166667_0.125_fabric6.jpg
+Ni 1.00
+newmtl lambert8SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd fabric5.jpg
+Ni 1.00
+newmtl lambert9SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.05 0.05 0.05
+Tf 1.00 1.00 1.00
+map_Kd konstanzPicture.jpg
+Ni 1.00
+newmtl lambert10SG
+illum 4
+Kd 1.00 1.00 1.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl lambert11SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.26 0.26 0.26
+Tf 1.00 1.00 1.00
+map_Kd Akari.jpg
+Ni 1.00
+newmtl lambert12SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd OpenXR_ViewSpace.png
+Ni 1.00
+newmtl phong2SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd -s_0.2_0.05_wood2.jpg
+Ni 1.00
+Ks 0.05 0.05 0.05
+Ns 6.36
+newmtl phong3SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.01 0.01 0.01
+Tf 1.00 1.00 1.00
+map_Kd -s_0.166667_0.05_wood3.jpg
+Ni 1.00
+Ks 0.04 0.04 0.04
+Ns 0.00
+newmtl phongE1SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.02 0.02 0.02
+Tf 1.00 1.00 1.00
+map_Kd -s_0.05_0.05_plaster1.jpg
+Ni 1.00
+Ks 0.14 0.13 0.09
+newmtl phongE2SG
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.11 0.11 0.11
+Tf 1.00 1.00 1.00
+map_Kd -s_0.166667_0.166667_fabric7.jpg
+Ni 1.00
+Ks 0.50 0.50 0.50
