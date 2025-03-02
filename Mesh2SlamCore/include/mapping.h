@@ -30,11 +30,11 @@ class Mapping
 {
 public:
 
-    Mapping(std::shared_ptr<Map> map, SlamParams* slamParams) : m_map(map), m_slamParams(slamParams){ m_mappingState=MappingStates::MAP_INITIALIZED;}
+    Mapping(Map* map, SlamParams* slamParams) : m_map(map), m_slamParams(slamParams){ m_mappingState=MappingStates::MAP_INITIALIZED;}
     void run();
     void insertFrame(Frame* frame);
-    void setTracker(std::shared_ptr<Tracking> tracker);
-    void setViewer(std::shared_ptr<Viewer> viewer);
+    void setTracker(Tracking* tracker);
+    void setViewer(Viewer* viewer);
     void setState(const MappingStates& mapState){m_mappingState = mapState;}
     void stopMapping(void) {m_mappingState = MappingStates::STOP_MAPPING; m_stop = true;    Logger<std::string>::LogInfoI("Stopping Mapper.");}
 
@@ -51,9 +51,9 @@ private:
     bool m_updated{true};
     Frame* m_newFrame{nullptr};
     std::list<Frame*> m_availableFrames;
-    std::shared_ptr<Map> m_map{nullptr};
-    std::shared_ptr<Tracking> m_tracker{nullptr};
-    std::shared_ptr<Viewer> m_viewer{nullptr};
+    Map* m_map{nullptr};
+    Tracking* m_tracker{nullptr};
+    Viewer* m_viewer{nullptr};
     std::vector<MapPoint*> m_newMapPoints;
 
     MappingStates m_mappingState{MappingStates::NO_MAP};

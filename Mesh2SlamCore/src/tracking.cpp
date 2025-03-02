@@ -6,11 +6,11 @@
 
 Tracking::Tracking(SlamParams* slamParams) : m_slamParams(slamParams)
 {
-    m_trackingState = TrackingStates::NO_FRAME;;
+    m_trackingState = TrackingStates::NO_FRAME;
     m_MVG.updateParams(m_slamParams);
 }
 
-Tracking::Tracking(std::shared_ptr<Map> map, SlamParams* slamParams) : m_map(map), m_slamParams(slamParams)
+Tracking::Tracking(Map* map, SlamParams* slamParams) : m_map(map), m_slamParams(slamParams)
 {
     m_trackingState = TrackingStates::NO_FRAME;
     m_MVG.updateParams(m_slamParams);
@@ -26,13 +26,14 @@ bool Tracking::run(const VertexFeatures& vertexFeatures, const double currentTim
     {
         case (TrackingStates::TRACKING):
         {
-            const int maxBadTrack = m_slamParams->errorParams.maxBadTrackCnt;
+            static const int maxBadTrack = m_slamParams->errorParams.maxBadTrackCnt;
             //TODO: to be removed, this is for debugging purposes
             auto timerStart = std::chrono::high_resolution_clock::now();
 
             m_newFrame = Frame(vertexFeatures, currentTimestamp, m_trackFrameCnt, m_slamParams);
             if (trackNextFrame())
             {
+                ok = true;
                 updateTrackedFrame();
             } else
             {
@@ -54,7 +55,6 @@ bool Tracking::run(const VertexFeatures& vertexFeatures, const double currentTim
             std::chrono::duration<double, std::milli> duration = timerEnd - timerStart;
 
             m_viewer->setSquareUpdateFlag(2);
-            ok = true;
             break;
         }
 
@@ -76,7 +76,10 @@ bool Tracking::run(const VertexFeatures& vertexFeatures, const double currentTim
         {
             m_oldFrame = Frame(vertexFeatures, currentTimestamp, m_trackFrameCnt, m_slamParams);
             if(m_oldFrame.isInitialized())
+            {
                 m_trackingState = TrackingStates::NOT_INITIALIZED;
+                ok = true;
+            }
             break;
         }
 
@@ -93,7 +96,7 @@ bool Tracking::run(const VertexFeatures& vertexFeatures, const double currentTim
                 {
                     m_trackingState = TrackingStates::TRACKING;
                     Logger<std::string>::LogInfoIV("Update successul.");
-                    return true;
+                    ok = true;
                 }
             }
             Logger<std::string>::LogError("Tracking still lost");
@@ -215,7 +218,7 @@ bool Tracking::createInitialMap()
     pPreviousFrame->setConnections();
     pCurrentFrame->setConnections();
 
-    const int iterations = m_slamParams->optimizationParams.GBAIterations;
+    static const int iterations = m_slamParams->optimizationParams.GBAIterations;
     //Optimize
     Optimizer::globalBundleAdjustment(m_map, iterations);
 
@@ -268,12 +271,12 @@ bool Tracking::createInitialMap()
     return true;
 }
 
-void Tracking::setMapping(std::shared_ptr<Mapping> mapping)
+void Tracking::setMapping(Mapping* mapping)
 {
     m_mapper = mapping;
 }
 
-void Tracking::setViewer(std::shared_ptr<Viewer> viewer)
+void Tracking::setViewer(Viewer* viewer)
 {
     m_viewer = viewer;
 }
@@ -281,8 +284,8 @@ void Tracking::setViewer(std::shared_ptr<Viewer> viewer)
 bool Tracking::trackNextFrame()
 {
     std::vector<MapPoint*> mapPointMatches;
-    const int minMatches = m_slamParams->featureParams.minRefFrameMatches;
-    const float minInlierRatio = m_slamParams->errorParams.minInlierRatio;
+    static const int minMatches = m_slamParams->featureParams.minRefFrameMatches;
+    static const float minInlierRatio = m_slamParams->errorParams.minInlierRatio;
     bool tracked = false;
     //track using previous motion estimation
     if (m_trackWithMotion)
@@ -295,7 +298,7 @@ bool Tracking::trackNextFrame()
         size_t matches = Matcher::matchAndAddByProjection(&m_newFrame, m_referenceFrame);
         if(matches > minMatches)
         {
-            m_trackInliers = Optimizer::pnpOnFrame(m_newFrame, m_slamParams->optimizationParams.PNPIterations);
+            m_trackInliers = Optimizer::pnpOnFrame(&m_newFrame, m_slamParams->optimizationParams.PNPIterations);
 
             if(m_trackInliers > static_cast<float>(matches) * minInlierRatio)
             {
@@ -318,7 +321,7 @@ bool Tracking::trackNextFrame()
                 //perform PNP using:
                 // matched map points (fixed 3D), new measurements and previous pose as initial estimate
                 m_newFrame.setPose(m_referenceFrame->getPosec());
-                m_trackInliers = Optimizer::Optimizer::pnpOnFrame(m_newFrame, m_slamParams->optimizationParams.PNPIterations);
+                m_trackInliers = Optimizer::Optimizer::pnpOnFrame(&m_newFrame, m_slamParams->optimizationParams.PNPIterations);
 
                 if(m_trackInliers > static_cast<float>(matches) * minInlierRatio)
                 {
@@ -348,7 +351,7 @@ bool Tracking::trackNextFrame()
             //perform PNP using:
             // matched map points (fixed 3D), new measurements and previous pose as initial estimate
             m_newFrame.setPose(m_referenceFrame->getPosec());
-            m_trackInliers = Optimizer::Optimizer::pnpOnFrame(m_newFrame, m_slamParams->optimizationParams.PNPIterations);
+            m_trackInliers = Optimizer::Optimizer::pnpOnFrame(&m_newFrame, m_slamParams->optimizationParams.PNPIterations);
 
             if(m_trackInliers > static_cast<float>(matches) * minInlierRatio)
             {
@@ -575,7 +578,7 @@ bool Tracking::createNewFrame()
 
         if(GBAReady)
         {
-            const int iterations = m_slamParams->optimizationParams.GBAIterations;
+            static const int iterations = m_slamParams->optimizationParams.GBAIterations;
             Logger<std::string>::LogInfoIII("Performing GBA!");
             //Optimize
             Optimizer::globalBundleAdjustment(m_map, iterations);
@@ -597,7 +600,7 @@ bool Tracking::createNewFrame()
 
 size_t Tracking::updateFrameOutliers()
 {
-    size_t trackedCount = 0;
+    uint32_t inlierCount = 0;
     //set outlier slamParams
     for (size_t i = 0; i < m_newFrame.getN(); i++)
     {
@@ -606,17 +609,18 @@ size_t Tracking::updateFrameOutliers()
         if (mapPoint != nullptr)
             if (mapPoint->getFrameViews().size() > 0)
             {
-                if (m_newFrame.getOutliers()[i])
+                //update error
+                if (m_newFrame.m_outliers[i])
                 {
-                    mapPoint = nullptr;
+                    m_newFrame.getMapPoints()[i] = nullptr;
                 } else
                 {
-                    trackedCount++;
+                    inlierCount++;
                 }
             }
     }
 
-    return trackedCount;
+    return inlierCount;
 }
 
 void Tracking::clearUpdateFlag()
@@ -634,15 +638,15 @@ void Tracking::setUpdateFlag()
 bool Tracking::trackLostFrame(Frame* frame)
 {
     bool tracked = false;
-    auto minMatches = m_slamParams->featureParams.minMatches;
+    static const int minMatches = m_slamParams->featureParams.minMatches;
     size_t matchedFeatures  = Matcher::matchOldFrames(&m_newFrame, m_frameSequence, 50, frame);
     if(matchedFeatures >= minMatches)
     {
         //perform PNP using:
         // matched map points (fixed 3D), new measurements and previous pose as initial estimate
         m_newFrame.setPose(m_referenceFrame->getPosec());
-        m_trackInliers = Optimizer::Optimizer::pnpOnFrame(m_newFrame, m_slamParams->optimizationParams.PNPIterations);
-        auto minTracked = m_slamParams->featureParams.minTracked;
+        m_trackInliers = Optimizer::Optimizer::pnpOnFrame(&m_newFrame, m_slamParams->optimizationParams.PNPIterations);
+        static const int minTracked = m_slamParams->featureParams.minTracked;
         if(m_trackInliers > static_cast<float>(matchedFeatures) * 0.95)
         {
             tracked = true;
@@ -681,7 +685,7 @@ bool Tracking::updateTrackedFrame()
         //if new map points are matched perform further pose estimation
         Logger<std::string>::LogInfoI("Frame: " + std::to_string(m_newFrame.getID()) + ": " + std::to_string(m_matchedtoLocalMap) + " map points matched and added. ");
         Logger<std::string>::LogInfoI("inliers before local map matching: " + std::to_string(m_trackInliers));
-        m_trackInliers = Optimizer::Optimizer::pnpOnFrame(m_newFrame, m_slamParams->optimizationParams.PNPIterations);
+        m_trackInliers = Optimizer::Optimizer::pnpOnFrame(&m_newFrame, m_slamParams->optimizationParams.PNPIterations);
         Logger<std::string>::LogInfoI("inliers after local map matching: " + std::to_string(m_trackInliers));
 
         //TODO: Go back to older pose if inlier ratio is too low (since PNP will set camera to new pose)

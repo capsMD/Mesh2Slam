@@ -174,7 +174,6 @@ private:
     glm::vec3 m_endOrientation{0.0f};
 };
 
-
 enum class EventTypes
 {
     Empty =0,
@@ -284,12 +283,12 @@ private:
     bool m_isLinked{false};
 };
 
-class GLBase
+class GLPrimitive
 {
 public:
-    GLBase(){}
-    GLBase(const glm::mat4& pose) : m_pose(pose){}
-    virtual ~GLBase() {}
+    GLPrimitive(){}
+    GLPrimitive(const glm::mat4& pose) : m_pose(pose){}
+    virtual ~GLPrimitive() {}
     virtual void render() const;
     void setTransform(const glm::mat4& newPose) {}
     void setScale(const float v) {m_scale = v;}
@@ -325,7 +324,7 @@ private:
     float m_scale{1.0f};
 };
 
-class AxisGizmo : public GLBase
+class AxisGizmo : public GLPrimitive
 {
 public:
     AxisGizmo(){initialize();};
@@ -334,12 +333,12 @@ private:
     void initialize();
 };
 
-class FrameGizmo : public GLBase
+class FrameGizmo : public GLPrimitive
 {
 public:
     FrameGizmo(){};
     FrameGizmo(const char frameType) : m_frameType(frameType){};
-    FrameGizmo(const char frameType, const glm::mat4& pose, unsigned long int id) : GLBase(pose), m_frameType(frameType), m_ID(id){};
+    FrameGizmo(const char frameType, const glm::mat4& pose, unsigned long int id) : GLPrimitive(pose), m_frameType(frameType), m_ID(id){};
     void renderAxisGizmos() const;
     void setParentNode(FrameGizmo* f);
     FrameGizmo* getParentNode(void) const {return m_parent;}
@@ -353,7 +352,7 @@ private:
     FrameGizmo* m_parent{nullptr};
 };
 
-class PathGizmo : public GLBase
+class PathGizmo : public GLPrimitive
 {
 public:
     PathGizmo() {}
@@ -363,7 +362,7 @@ private:
     bool m_isInitialized{false};
 };
 
-class TrailGizmo : public GLBase
+class TrailGizmo : public GLPrimitive
 {
 public:
     TrailGizmo(){}
@@ -371,7 +370,7 @@ public:
     void render() const override;
 };
 
-class PointCloud : public GLBase
+class PointCloud : public GLPrimitive
 {
 public:
     ~PointCloud(){deleteBuffers();}
@@ -384,7 +383,7 @@ private:
     glm::vec3 m_color{1.0f, 1.0f, 1.0f};
 };
 
-class GUISquaresGizmo : public GLBase
+class GUISquaresGizmo : public GLPrimitive
 {
 public:
     ~GUISquaresGizmo(){deleteBuffers();}
@@ -454,9 +453,6 @@ private:
 
 };
 
-
-
-
 class VtxFeature
 {
 public:
@@ -490,7 +486,7 @@ public:
     void update();
     void stopViewer();
     void exit();
-	void setMap(std::shared_ptr<Map> map) { mp_map = map;}
+	void setMap(Map* map) { m_map = map;}
     void setModelManager(ModelManager* modelManager);
     void setScale(const float scale){m_scaleFactor = scale;}
     void setMapUpdateFlag();
@@ -552,7 +548,7 @@ private:
     EGLContext  m_eglContext;
     EGLSurface  m_eglSurface;
 
-    std::shared_ptr<Map> mp_map{nullptr};
+    Map* m_map{nullptr};
     ObjMesh* m_mesh{nullptr};
 
     std::map<unsigned long int,FrameGizmo* > m_frames;
@@ -567,9 +563,9 @@ private:
     VtxFeature* m_vtxFeature{nullptr};
 
     //TODO: Temporary to test point clouds for every frame
-    std::vector<std::unique_ptr<PointCloud> > mp_pointClouds;
+    std::vector<PointCloud*> mp_pointClouds;
 
-    GLuint renderFBO, depthFBO;
+    GLuint m_renderFBO, m_depthFBO;
 
     glm::mat4 m_mMatrix{glm::mat4(1.0f)};
     glm::mat4 m_vMatrix{glm::mat4(1.0f)};
@@ -579,7 +575,7 @@ private:
     SlamParams* m_slamParams{ NULL };
     std::atomic<bool> m_mapUpdateFlag{false};
 	std::atomic<bool> m_vtxFeaturesInitialized{false};
-    std::mutex mMutexUpdate;
+    std::mutex m_mutexUpdate;
 	std::condition_variable m_cv;
     std::mutex m_viewerMutex;
     bool m_forceOriginStart{true};

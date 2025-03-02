@@ -592,7 +592,7 @@ bool MVG::chooseRTSolution(
 
     const size_t nPoints = m_kptsMatches.size();
     const size_t nSolutions = Rs.size();
-	const float minParallax = m_slamParams->errorParams.minParallax;
+	static const float minParallax = m_slamParams->errorParams.minParallax;
 
     //store for every solution
     std::vector<std::vector<float> > vCosParallaxes(nSolutions, std::vector<float>(nPoints, 0.0f));

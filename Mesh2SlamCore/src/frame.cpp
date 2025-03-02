@@ -48,7 +48,7 @@ bool Frame::MatchWithFrame(Frame& otherFrame)
 {
     size_t nMatches = 0;
 
-        size_t minMatches = m_slamParams->featureParams.minMatches;
+        static const size_t minMatches = m_slamParams->featureParams.minMatches;
 
         auto& otherFrameDescriptors = otherFrame.getSimDescriptors();
         for (size_t i = 0; i < N; i++)

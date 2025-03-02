@@ -513,12 +513,12 @@ void Mapping::run()
         m_abortBA = true;
     }
 
-    void Mapping::setTracker(std::shared_ptr<Tracking> tracker)
+    void Mapping::setTracker(Tracking* tracker)
     {
         m_tracker = tracker;
     }
 
-    void Mapping::setViewer(std::shared_ptr<Viewer> viewer)
+    void Mapping::setViewer(Viewer* viewer)
     {
         m_viewer = viewer;
     }

@@ -42,12 +42,12 @@ public:
 	Tracking() {};
     ~Tracking();
 	Tracking(SlamParams* slamParams);
-	Tracking(std::shared_ptr<Map> map, SlamParams* slamParams);
+	Tracking(Map* map, SlamParams* slamParams);
 	bool run(const VertexFeatures& vertexFeatures, const double timestamp, unsigned long int mFrameCounter);
 
     void removeFrame(Frame* frame);
-    void setMapping(std::shared_ptr<Mapping> mapping);
-    void setViewer(std::shared_ptr<Viewer> viewer);
+    void setMapping(Mapping* mapping);
+    void setViewer(Viewer* viewer);
     void setUpdateFlag();
     void clearUpdateFlag();
     bool checkUpdateFlag(void) const {return m_frameUpdateFlag;}
@@ -84,9 +84,9 @@ private:
     //initial point matches
 	std::vector<PtPair> m_prunedMatchesIdx;
 
-    std::shared_ptr<Mapping> m_mapper{nullptr};
-	std::shared_ptr<Map> m_map{nullptr};
-    std::shared_ptr<Viewer> m_viewer{nullptr};
+    Mapping* m_mapper{nullptr};
+	Map* m_map{nullptr};
+    Viewer* m_viewer{nullptr};
 
     Frame m_newFrame;
     Frame m_oldFrame;

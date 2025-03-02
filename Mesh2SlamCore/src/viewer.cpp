@@ -79,11 +79,8 @@ bool Viewer::initialize()
     //std::cerr << "gizmos Initialized." << std::endl;
 
     update();
-
     glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
-
     return true;
-    //setCallbacks();
 }
 
 void Viewer::render()
@@ -239,11 +236,11 @@ void Viewer::update()
 {
     if(!m_stop)
     {
-        if (!mp_map) return;
+        if (!m_map) return;
         //fetch frames and pts form map
-        std::vector<MapPoint*> p_mapPoints = mp_map->getMapPoints();
-        std::vector<Frame*> p_frames = mp_map->getFrames();
-        std::vector<TFrame*> p_tframes = mp_map->getTFrames();
+        std::vector<MapPoint*> p_mapPoints = m_map->getMapPoints();
+        std::vector<Frame*> p_frames = m_map->getFrames();
+        std::vector<TFrame*> p_tframes = m_map->getTFrames();
 
         std::vector<glm::vec3> points;
         size_t N = p_mapPoints.size();
@@ -380,11 +377,11 @@ void Viewer::initializeShaders()
 
 void Viewer::initializeBuffers()
 {
-    glGenFramebuffers(1, &renderFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
+    glGenFramebuffers(1, &m_renderFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_renderFBO);
 
-    glGenRenderbuffers(1, &depthFBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthFBO);
+    glGenRenderbuffers(1, &m_depthFBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_depthFBO);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, m_width, m_height);
 
     GLenum drawBuffers[] = { GL_NONE};
@@ -408,8 +405,10 @@ void Viewer::setModelManager(ModelManager* modelManager)
     }
     m_mesh = m_modelManager->getModelMesh();
     if(m_mesh == nullptr)
+    {
         std::cout << "Oh no, model mesh is nullptr" << std::endl;
-
+        return;
+    }
     initializeVtxFeature(modelManager->getModelPts());
 }
 
@@ -616,7 +615,7 @@ void Viewer::clearMapUpdateFlag()
 
 void Viewer::stopViewer()
 {
-    std::lock_guard<std::mutex> lock(mMutexUpdate);
+    std::lock_guard<std::mutex> lock(m_mutexUpdate);
     m_stop = true;
     Logger<std::string>::LogInfoI("Viewer updates stopped.");
 }
@@ -1052,12 +1051,12 @@ void Camera::setTransform()
 
 //********************************************************  GL ELEMENTS ********************************************************
 
-void GLBase::initialize()
+void GLPrimitive::initialize()
 {
 
 }
 
-void GLBase::loadPoints(const std::vector<glm::vec3> &points, const std::vector<glm::vec3> &pointsColor)
+void GLPrimitive::loadPoints(const std::vector<glm::vec3> &points, const std::vector<glm::vec3> &pointsColor)
 {
     std::vector<GLfloat> glPoints;
     std::vector<GLfloat> glPointsColor;
@@ -1067,14 +1066,14 @@ void GLBase::loadPoints(const std::vector<glm::vec3> &points, const std::vector<
     initializeBuffers(&glPoints,&glPointsColor);
 }
 
-void GLBase::loadPoints(const std::vector<glm::vec3> &points)
+void GLPrimitive::loadPoints(const std::vector<glm::vec3> &points)
 {
     std::vector<GLfloat> glPoints;
     ViewerUtil::convertToGL(points,glPoints);
     initializeBuffers(&glPoints);
 }
 
-void GLBase::initializeBuffers(std::vector<GLfloat> *glPoints, std::vector<GLfloat> *glpointsColors)
+void GLPrimitive::initializeBuffers(std::vector<GLfloat> *glPoints, std::vector<GLfloat> *glpointsColors)
 {
     if(glPoints == nullptr || glpointsColors== nullptr)
         return;
@@ -1109,7 +1108,7 @@ void GLBase::initializeBuffers(std::vector<GLfloat> *glPoints, std::vector<GLflo
     glBindVertexArray(0);
 }
 
-void GLBase::initializeBuffers(std::vector<GLfloat> *glPoints)
+void GLPrimitive::initializeBuffers(std::vector<GLfloat> *glPoints)
 {
 
     if(glPoints == nullptr)
@@ -1133,7 +1132,7 @@ void GLBase::initializeBuffers(std::vector<GLfloat> *glPoints)
     glBindVertexArray(0);
 }
 
-void GLBase::render() const
+void GLPrimitive::render() const
 {
     if (m_vao != 0)
     {
@@ -1143,7 +1142,7 @@ void GLBase::render() const
     }
 }
 
-void GLBase::deleteBuffers()
+void GLPrimitive::deleteBuffers()
 {
     if( m_buffers.size() > 0 )
     {
@@ -1158,7 +1157,7 @@ void GLBase::deleteBuffers()
     }
 }
 
-void GLBase::updateBuffer(const std::vector<GLfloat> *glPoints)
+void GLPrimitive::updateBuffer(const std::vector<GLfloat> *glPoints)
 {
     m_N = glPoints->size();
     glBindVertexArray(m_vao);
@@ -1168,7 +1167,7 @@ void GLBase::updateBuffer(const std::vector<GLfloat> *glPoints)
     glBindVertexArray(0);
 }
 
-void GLBase::initializeEmptyBuffer()
+void GLPrimitive::initializeEmptyBuffer()
 {
 
 // Generate VAO
@@ -1196,7 +1195,7 @@ void GLBase::initializeEmptyBuffer()
 
 }
 
-void GLBase::initializeBuffers(const std::vector<GLfloat> *points, const std::vector<GLuint> *indices)
+void GLPrimitive::initializeBuffers(const std::vector<GLfloat> *points, const std::vector<GLuint> *indices)
 {
     if( ! m_buffers.empty() ) deleteBuffers();
 
@@ -1323,7 +1322,7 @@ void PathGizmo::updatePoints(const std::vector<glm::vec3>& points)
 
 void PathGizmo::render() const
 {
-    GLBase::render();
+    GLPrimitive::render();
 }
 
 void TrailGizmo::render() const

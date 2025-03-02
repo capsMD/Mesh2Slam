@@ -6,26 +6,26 @@
 #include <random>
 
 
-void Optimizer::globalBundleAdjustment(std::shared_ptr< Map> pMap, const int iterations)
+void Optimizer::globalBundleAdjustment(Map* map, const int iterations)
 {
-    std::vector<Frame*> vpFrames = pMap->getFrames();
-    std::vector<MapPoint*> vpMapPoints = pMap->getMapPoints();
-    globalBA(vpFrames, vpMapPoints, true, iterations);
+    std::vector<Frame*> frames = map->getFrames();
+    std::vector<MapPoint*> mapPoints = map->getMapPoints();
+    globalBA(frames, mapPoints, true, iterations);
 }
 
-int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
+int Optimizer::pnpOnFrame(Frame *frame, const int iterations)
 {
     bool ok = false;
     cv::Mat K = cv::Mat::eye(3,3,CV_32F);
-    K.at<float>(0,0) = frame.getCamPrjParams().fx;
-    K.at<float>(1,1) = frame.getCamPrjParams().fy;
-    K.at<float>(0,2) = frame.getCamPrjParams().cx;
-    K.at<float>(1,2) = frame.getCamPrjParams().cy;
+    K.at<float>(0,0) = frame->getCamPrjParams().fx;
+    K.at<float>(1,1) = frame->getCamPrjParams().fy;
+    K.at<float>(0,2) = frame->getCamPrjParams().cx;
+    K.at<float>(1,2) = frame->getCamPrjParams().cy;
 
-    const float fx = frame.getCamPrjParams().fx;
-    const float fy = frame.getCamPrjParams().fy;
-    const float cx = frame.getCamPrjParams().cx;
-    const float cy = frame.getCamPrjParams().cy;
+    const float fx = frame->getCamPrjParams().fx;
+    const float fy = frame->getCamPrjParams().fy;
+    const float cx = frame->getCamPrjParams().cx;
+    const float cy = frame->getCamPrjParams().cy;
 
     //optimizer
     g2o::SparseOptimizer optimizer;
@@ -39,70 +39,69 @@ int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
     optimizer.setAlgorithm(solver);
 
     int nBad = 0;
+    int nGood = 0;
 
     // Set Frame vertex
     g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-    vSE3->setEstimate(toSE3Quat(frame.getPosec()));
+    vSE3->setEstimate(toSE3Quat(frame->getPosec()));
     vSE3->setId(0);
     vSE3->setFixed(false);
     optimizer.addVertex(vSE3);
     // Set MapPoint vertices
-    const int N = frame.getN();
+    const int N = frame->getN();
 
     std::vector<g2o::EdgeSE3ProjectXYZOnlyPose*> vpEdgesMono;
-    std::vector<size_t> vnIndexEdgeMono;
+    std::vector<uint32_t> vnIndexEdgeMono;
     vpEdgesMono.reserve(N);
     vnIndexEdgeMono.reserve(N);
 
-    const float deltaMono = sqrt(5.991);
+    const float delta = 5.991;
 
-    std::vector<MapPoint*> mapPoints = frame.getMapPoints();
+    std::vector<cv::KeyPoint> kps = frame->getKeyPoints();
+    std::vector<MapPoint*> mapPoints = frame->getMapPoints();
 
     for(int i=0; i<N; i++)
     {
         MapPoint* mapPoint = mapPoints[i];
         if(mapPoint != nullptr)
         {
-                Eigen::Matrix<double,2,1> obs;
-                const cv::KeyPoint &kpUn = frame.getKeyPoints()[i];
-                obs << kpUn.pt.x, kpUn.pt.y;
+            Eigen::Matrix<double,2,1> obs;
+            const cv::KeyPoint &kpUn = frame->getKeyPoints()[i];
+            obs << kpUn.pt.x, kpUn.pt.y;
+            g2o::EdgeSE3ProjectXYZOnlyPose* e = new g2o::EdgeSE3ProjectXYZOnlyPose();
 
-                g2o::EdgeSE3ProjectXYZOnlyPose* e = new g2o::EdgeSE3ProjectXYZOnlyPose();
+            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
+            e->setMeasurement(obs);
+            e->setInformation(Eigen::Matrix2d::Identity()*1.0);
 
-                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
-                e->setMeasurement(obs);
-                e->setInformation(Eigen::Matrix2d::Identity()*1.0f);
+            g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+            e->setRobustKernel(rk);
+            rk->setDelta(delta);
 
-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                e->setRobustKernel(rk);
-                rk->setDelta(deltaMono);
+            e->fx = fx;
+            e->fy = fy;
+            e->cx = cx;
+            e->cy = cy;
+            cv::Mat Xw = mapPoint->getPosition();
+            e->Xw[0] = Xw.at<float>(0);
+            e->Xw[1] = Xw.at<float>(1);
+            e->Xw[2] = Xw.at<float>(2);
 
-                e->fx = fx;
-                e->fy = fy;
-                e->cx = cx;
-                e->cy = cy;
-                cv::Mat Xw = mapPoint->getPosition();
-                e->Xw[0] = Xw.at<float>(0);
-                e->Xw[1] = Xw.at<float>(1);
-                e->Xw[2] = Xw.at<float>(2);
+            optimizer.addEdge(e);
 
-                optimizer.addEdge(e);
-
-                vpEdgesMono.push_back(e);
-                vnIndexEdgeMono.push_back(i);
+            vpEdgesMono.push_back(e);
+            vnIndexEdgeMono.push_back(i);
+            nGood++;
         }
     }
 
 
-    // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
-    // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
-    const float chi2Mono[4]={5.991,5.991,5.991,5.991};
-    const int its[4]={10,10,10,10};
+    const float chi2Mono[4]={10.0, 8.0, 6.0f, 5.991};
 
     for(size_t it=0; it<4; it++)
     {
 
-        vSE3->setEstimate(toSE3Quat(frame.getPosec()));
+        vSE3->setEstimate(toSE3Quat(frame->getPosec()));
         optimizer.initializeOptimization(0);
         optimizer.optimize(iterations);
 
@@ -111,17 +110,23 @@ int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
         {
             g2o::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
 
-            const size_t idx = vnIndexEdgeMono[i];
+            const uint32_t idx = vnIndexEdgeMono[i];
 
+            if (frame->m_outliers[idx])
+            {
+                e->computeError();
+            }
             const float chi2 = e->chi2();
-            //std::cout << chi2 << std::endl;
+
             if(chi2>chi2Mono[it])
             {
+                frame->m_outliers[idx] = true;
                 e->setLevel(1);
                 nBad++;
             }
             else
             {
+                frame->m_outliers[idx] = false;
                 e->setLevel(0);
             }
 
@@ -136,50 +141,13 @@ int Optimizer::pnpOnFrame(Frame &frame, const int iterations)
     g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
     g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
     cv::Mat pose = toCVMat(SE3quat_recov);
-    frame.setPose(pose);
+    frame->setPose(pose);
 
-    MapPoint* mapPoint;
-    float totalError = 0.0f;
-    nBad = 0;
-    for (size_t i = 0; i < N; i++)
-    {
-        mapPoint = mapPoints[i];
+    return (nGood- nBad);
 
-        if((mapPoint == nullptr) || (mapPoint->isBad()))
-            continue;
-
-        const cv::Mat p3Dw = mapPoint->getPosition();
-        const cv::Mat p3Dc = frame.getRc() * p3Dw + frame.getTc();
-
-        const float x = p3Dc.at<float>(0);
-        const float y = p3Dc.at<float>(1);
-        const float invzc = 1.0f / p3Dc.at<float>(2);
-
-        const float u = fx * x * invzc + cx;
-        const float v = fy * y * invzc + cy;
-
-        const float error = (u - frame.getKeyPoints()[i].pt.x) * (u - frame.getKeyPoints()[i].pt.x) + (v - frame.getKeyPoints()[i].pt.y) * (v - frame.getKeyPoints()[i].pt.y);
-
-        totalError += error;
-
-        if (error > 5.991)
-        {
-            frame.getOutliers()[i] = true;
-            nBad++;
-            mapPoint->increaseBad();
-            mapPoint = nullptr;
-
-        }
-        else
-        {
-            mapPoint->increaseVisible();
-        }
-    }
-
-    return (N - nBad);
 }
 
-void Optimizer::localBA(std::shared_ptr<Map> pMap, Frame *newFrame, bool *stop, SlamParams* slamParams)
+void Optimizer::localBA(Map* pMap, Frame *newFrame, bool *stop, SlamParams* slamParams)
 {
     int iterations1 = slamParams->optimizationParams.BAIterations1;
     int iterations2 = slamParams->optimizationParams.BAIterations2;

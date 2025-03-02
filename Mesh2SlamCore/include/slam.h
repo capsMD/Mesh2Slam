@@ -46,8 +46,9 @@ public:
 	void run();
     void shutdown();
     void stopSLAM();
-    std::shared_ptr<Viewer> getViewer() {return m_viewer;}
+    Viewer* getViewer() {return m_viewer;}
     const SlamState getSlamState() const {return m_slamState;}
+    bool cleanup();
 private:
 
     SlamState m_slamState{SlamState::STARTUP};
@@ -55,13 +56,13 @@ private:
     unsigned long int m_sourceFrameCnt{0};
 	double m_timestamp;
 
-    std::shared_ptr<std::thread> m_mappingThread{nullptr};
-    std::shared_ptr<std::thread> m_viewerThread{nullptr};
+    std::thread* m_mappingThread{nullptr};
+    std::thread* m_viewerThread{nullptr};
 
-    std::shared_ptr<Mapping> m_mapper{nullptr};
-    std::shared_ptr<Viewer> m_viewer{nullptr};
-    std::shared_ptr<Map> m_map{nullptr};
-	std::shared_ptr<Tracking> m_tracker{nullptr};
+    Mapping* m_mapper{nullptr};
+    Viewer* m_viewer{nullptr};
+    Map* m_map{nullptr};
+	Tracking* m_tracker{nullptr};
 
 	SlamParams* m_slamParams{nullptr};
 
@@ -87,16 +88,17 @@ public:
     void renderSLAM();
     void startSLAM() ;
     void stopSLAM();
-    std::shared_ptr<Slam> getSlam() {return m_slam;}
-    std::shared_ptr<Viewer> getViewer() { if(m_slam!= nullptr) return m_slam->getViewer(); return nullptr;}
+    Slam* getSlam() {return m_slam;}
+    Viewer* getViewer() { if(m_slam!= nullptr) return m_slam->getViewer(); return nullptr;}
     bool isInitialized(void) const {return m_slamInitialized;}
+    bool cleanup();
 private:
-    std::shared_ptr<Slam> m_slam{nullptr};
+    Slam* m_slam{nullptr};
     SlamParams* m_slamParams{nullptr};
-    std::shared_ptr<std::thread> m_slamThread{nullptr};
+    std::thread* m_slamThread{nullptr};
+    std::shared_ptr<std::map<std::string, std::shared_ptr<Shader> > > m_shaders;
     std::atomic<bool> m_slamInitialized{false};
     std::atomic<bool> m_stopped{false};
-    std::shared_ptr<std::map<std::string, std::shared_ptr<Shader> > > m_shaders;
     AAssetManager *m_assetManager;
     cv::Mat m_camImage;
 

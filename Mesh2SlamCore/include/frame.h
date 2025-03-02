@@ -107,7 +107,7 @@ public:
     const std::vector<size_t>& getSimDescriptors(void) const {return m_vtxDescriptors;}
 
     std::vector<MapPoint*> getMapPoints(void);
-    std::vector<bool>       getOutliers(void) {return m_outliers;}
+    std::vector<bool>& getOutliers(void) {return m_outliers;}
     void setMapPoints(std::vector<MapPoint*>& mps) { m_mapPoints = mps;}
     const unsigned int getNTrackedMapPoints(const unsigned int) ;
     const unsigned int checkRepeatedFeatures(Frame* frame);
@@ -133,7 +133,6 @@ public:
     bool checkReprojectionError();
 
     unsigned long int getImageFrameNumber(void) const {return m_ID;}
-    std::vector<bool> getOutliers(void) const {return m_outliers;}
     std::map<size_t, MapPoint*> getDescriptorToMapPoints(void) const {return m_descriptor_mapPoint;}
     std::unordered_map<size_t, size_t> getDescriptorToIdx(void) const {return m_descriptor_idx;}
     bool getFirstConnection() const {return m_firstConnection;}
@@ -147,6 +146,9 @@ private:
     void initialize();
     void setFeaturesIdx2Grid();
     void undistortKeypoints();
+
+public:
+    std::vector<bool> m_outliers;
 
 private:
     static unsigned long int nextID;
@@ -162,7 +164,6 @@ private:
     CamParams m_camParams;
 
     size_t N{0};
-    std::vector<bool> m_outliers;
     std::vector<MapPoint*> m_mapPoints;
 
     std::vector<cv::KeyPoint> m_keyPoints;

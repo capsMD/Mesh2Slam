@@ -6,7 +6,7 @@
 long unsigned int MapPoint::nextID = 0;
 std::mutex MapPoint::mMapPointsGlobalMutex;
 
-MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &map, const size_t descriptor, float e) : mPosition(position.clone()), m_map(map), m_vtxDescriptor(descriptor), m_error(e)
+MapPoint::MapPoint(const cv::Mat &position, Frame *frame, Map* &map, const size_t descriptor, float e) : mPosition(position.clone()), m_map(map), m_vtxDescriptor(descriptor), m_error(e)
 {
     {
         std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);
@@ -24,7 +24,7 @@ MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &
     m_initialDistance = cv::norm(pt2Cam);
 }
 
-MapPoint::MapPoint(const cv::Mat &position, Frame *frame, std::shared_ptr<Map> &map, const size_t descriptor) : mPosition(position.clone()), m_map(map), m_vtxDescriptor(descriptor)
+MapPoint::MapPoint(const cv::Mat &position, Frame *frame, Map* &map, const size_t descriptor) : mPosition(position.clone()), m_map(map), m_vtxDescriptor(descriptor)
 {
     {
         std::unique_lock<std::mutex> lock(mMapPointsGlobalMutex);

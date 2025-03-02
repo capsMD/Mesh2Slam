@@ -6,22 +6,25 @@ Slam::Slam(SlamParams* params, AAssetManager *assetManager) : m_slamParams(param
     m_slamState = RUNNING;
 
     try {
-        m_map = std::make_shared<Map>();
-        if (!m_map) {
+        m_map = new Map();
+        if (!m_map)
+        {
             Logger<std::string>::LogError("map initialization failed.");
             initializationOk = false;
         }
         Logger<std::string>::LogInfoI("map initialized.");
 
-        m_tracker = std::make_shared<Tracking>(m_map, m_slamParams);
-        if (!m_tracker) {
+        m_tracker = new Tracking(m_map, m_slamParams);
+        if (!m_tracker)
+        {
             Logger<std::string>::LogError("tracker initialization failed.");
             initializationOk = false;
         }
         Logger<std::string>::LogInfoI("tracker initialized.");
 
-        m_viewer = std::make_shared<Viewer>(m_slamParams, assetManager);
-        if (!m_viewer) {
+        m_viewer = new Viewer(m_slamParams, assetManager);
+        if (!m_viewer)
+        {
             Logger<std::string>::LogError("viewer initialization failed.");
             initializationOk = false;
         }
@@ -29,14 +32,16 @@ Slam::Slam(SlamParams* params, AAssetManager *assetManager) : m_slamParams(param
         m_viewer->initialize();
         Logger<std::string>::LogInfoI("viewer initialized.");
 
-        m_mapper = std::make_shared<Mapping>(m_map, m_slamParams);
+        m_mapper = new Mapping(m_map, m_slamParams);
         if (!m_mapper) {
             Logger<std::string>::LogError("mapper initialization failed.");
             initializationOk = false;
         }
         Logger<std::string>::LogInfoI("mapper initialized.");
 
-        if (!initializationOk) {
+        if (!initializationOk)
+        {
+            cleanup();
             m_slamState = SlamState::STOPPED;
             Logger<std::string>::LogError("SLAM initialization failed due to one or more components.");
             throw std::runtime_error("SLAM initialization failed");
@@ -48,12 +53,13 @@ Slam::Slam(SlamParams* params, AAssetManager *assetManager) : m_slamParams(param
         m_mapper->setTracker(m_tracker);
         m_mapper->setViewer(m_viewer);
 
-        m_mappingThread = std::make_shared<std::thread>(&Mapping::run, m_mapper);
+        m_mappingThread = new std::thread(&Mapping::run, m_mapper);
         Logger<std::string>::LogInfoI("Mapping thread started.");
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Optional
     } catch (const std::exception& e)
     {
+        cleanup();
         m_slamState = SlamState::STOPPED;
         Logger<std::string>::LogError("Exception during SLAM initialization: " + std::string(e.what()));
         throw; // Re-throw to caller
@@ -107,12 +113,6 @@ void Slam::shutdown()
     {
         m_mappingThread->join();
     }
-
-    if (m_viewerThread && m_viewerThread->joinable())
-    {
-        m_viewerThread->join();
-    }
-
 }
 
 void Slam::renderViewer()
@@ -154,6 +154,43 @@ void Slam::stopSLAM()
     m_viewer->stopViewer();
 }
 
+bool Slam::cleanup()
+{
+    if (m_mappingThread && m_mappingThread->joinable())
+    {
+        m_mappingThread->join();
+        Logger<std::string>::LogInfoI("Mapper thread terminated.");
+    }
+    if(m_mappingThread)
+    {
+        delete m_mappingThread;
+        m_mappingThread = nullptr;
+    }
+    if(m_tracker)
+    {
+        delete m_tracker;
+        m_tracker = nullptr;
+    }
+    if(m_viewer)
+    {
+        delete m_viewer;
+        m_viewer = nullptr;
+    }
+    if(m_mapper)
+    {
+        delete m_mapper;
+        m_mapper = nullptr;
+    }
+
+    if(m_map)
+    {
+        delete m_map;
+        m_map = nullptr;
+    }
+
+    return true;
+}
+
 bool SlamManager::initializeSLAM()
 {
     bool initializationOk = true;
@@ -167,7 +204,8 @@ bool SlamManager::initializeSLAM()
     try
     {
         std::cout << "creating SLAM instances." << std::endl;
-        m_slam = std::make_shared<Slam>(m_slamParams, m_assetManager);
+        m_slam = new Slam(m_slamParams, m_assetManager);
+        initializationOk = true;
     }
     catch(const std::exception &e)
     {
@@ -178,7 +216,7 @@ bool SlamManager::initializeSLAM()
     if(initializationOk)
     {
         m_slamInitialized.store(true);
-        m_slamThread = std::make_shared<std::thread>(&Slam::run, m_slam);
+        m_slamThread = new std::thread(&Slam::run, m_slam);
     }
     return initializationOk;
 }
@@ -202,12 +240,34 @@ void SlamManager::renderSLAM()
 void SlamManager::stopSLAM()
 {
     m_slam->stopSLAM();
-
-    Logger<std::string>::LogInfoI("Slam running rendering-only mode.");
     if (m_slamThread && m_slamThread->joinable())
     {
         m_slamThread->join();
     }
+    m_slam->cleanup();
+
+    cleanup();
+}
+
+bool SlamManager::cleanup()
+{
+    if (m_slamThread && m_slamThread->joinable())
+    {
+        m_slamThread->join();
+    }
+    if(m_slamThread)
+    {
+        delete m_slamThread;
+        m_slamThread = nullptr;
+    }
+
+    if(m_slam)
+    {
+        delete m_slam;
+        m_slam = nullptr;
+    }
+
+    return true;
 }
 
 void SlamManager::startSLAM()

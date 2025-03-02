@@ -20,8 +20,8 @@ class Map;
 class MapPoint
 {
 public:
-    MapPoint(const cv::Mat& position, Frame* frame, std::shared_ptr<Map>& map, const size_t descriptor);
-    MapPoint(const cv::Mat& position, Frame* frame, std::shared_ptr<Map>& map, const size_t descriptor, float e);
+    MapPoint(const cv::Mat& position, Frame* frame, Map*& map, const size_t descriptor);
+    MapPoint(const cv::Mat& position, Frame* frame, Map*& map, const size_t descriptor, float e);
     MapPoint(const cv::Mat& position);
 
     const std::map<Frame*,size_t>& getFrameViews(void);
@@ -66,7 +66,7 @@ private:
     long unsigned int m_frameUpdate_ID{0};
 
     float m_error{0.0f};
-    std::shared_ptr<Map> m_map{nullptr};
+    Map* m_map{nullptr};
     MapPoint* m_mapPointReplaced{nullptr};
 
     std::map<Frame*,size_t> m_frameViews;

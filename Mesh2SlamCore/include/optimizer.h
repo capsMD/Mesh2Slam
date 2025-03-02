@@ -83,10 +83,10 @@ static inline Eigen::Matrix<double,4,4> toEigenPose(const cv::Mat& pose)
 class Optimizer
 {
 public:
-    static void globalBundleAdjustment(std::shared_ptr< Map> pMap, const int iterations);
+    static void globalBundleAdjustment(Map* pMap, const int iterations);
     static void globalBA(const std::vector<Frame*>& vpFrames, const std::vector<MapPoint*>& vpMapPoints, const bool isSetRobust, const int iterations);
-    static void localBA(std::shared_ptr<Map> pMap, Frame* newFrame, bool* stop, SlamParams* slamParams);
-    static int pnpOnFrame(Frame& frame, const int iterations);
+    static void localBA(Map* pMap, Frame* newFrame, bool* stop, SlamParams* slamParams);
+    static int pnpOnFrame(Frame* frame, const int iterations);
 private:
 };
 #endif //OPTIMIZER_H

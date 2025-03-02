@@ -121,21 +121,26 @@ private:
     void CreateSLAM()
     {
 
-        //read config file and store into parameters
-        std::string configFile = "configFile/slamConfigFile.yaml";
-        m_params =  new SlamParams();
-        XR_TUT_LOG("reading config file");
-        if(!readConfigFile(configFile, m_params, androidApp->activity->assetManager))
+        try {
+            //read config file and store into parameters
+            std::string configFile = "configFile/slamConfigFile.yaml";
+            m_params = new SlamParams();
+            XR_TUT_LOG("reading config file");
+            if (!readConfigFile(configFile, m_params, androidApp->activity->assetManager)) {
+                XR_TUT_LOG("error reading config file");
+            } else {
+                XR_TUT_LOG("config file apparently has been read!");
+            }
+
+            m_slamManager = new SlamManager(m_params, androidApp->activity->assetManager);
+            m_modelManager = new ModelManager();
+        }
+        catch(const std::exception&e)
         {
-            XR_TUT_LOG("error reading config file");
+            XR_TUT_LOG_ERROR("SLAM initialization failed: " + std::string(e.what()));
+            CleanupSlam();
+            throw;
         }
-        else {
-            XR_TUT_LOG("config file apparently has been read!");
-        }
-
-        m_slamManager = std::make_shared<SlamManager>(m_params, androidApp->activity->assetManager);
-        m_modelManager = new ModelManager();
-
     }
 
     void runSLAM()
@@ -149,17 +154,19 @@ private:
             m_modelManager->loadMesh(meshFile, androidApp->activity->assetManager);
         }
 
-        if(m_slamManager!= nullptr)
-            m_slamManager->initializeSLAM();
-
-        std::cout << "Slam thread is running." << std::endl;
-        if(m_modelManager!= nullptr)
+        if (m_slamManager && m_slamManager->initializeSLAM())
         {
-            m_slamManager->getSlam()->getViewer()->setModelManager(m_modelManager);
-        }
-        else
+            std::cout << "Slam thread is running." << std::endl;
+            if (m_modelManager)
+            {
+                m_slamManager->getSlam()->getViewer()->setModelManager(m_modelManager);
+            } else
+            {
+                std::cout << "Model manager not set!!." << std::endl;
+            }
+        } else
         {
-            std::cout << "Model manager not set!!." << std::endl;
+            XR_TUT_LOG_ERROR("SLAM failed to initialize.");
         }
     }
 
@@ -759,11 +766,49 @@ private:
 
     void StopSlam()
     {
-        if (m_params)
-            delete m_params;
-        if(m_modelManager)
+        try
+        {
+            if(m_slamManager)
+            {
+                m_slamManager->stopSLAM();
+                delete m_slamManager;
+                m_slamManager = nullptr;
+            }
+
+            if (m_params)
+            {
+                delete m_params;
+                m_params = nullptr;
+            }
+            if(m_modelManager)
+            {
+                delete m_modelManager;
+                m_modelManager = nullptr;
+            }
+        }
+        catch(const std::exception&e)
+        {
+            XR_TUT_LOG_ERROR("SLAM cleanup failed: " + std::string(e.what()));
             delete m_modelManager;
+            m_modelManager = nullptr;
+            delete m_params;
+            m_params = nullptr;
+            delete m_slamManager;
+            m_slamManager = nullptr;
+        }
+
     }
+
+    void CleanupSlam()
+    {
+        delete m_modelManager;
+        m_modelManager = nullptr;
+        delete m_slamManager;
+        m_slamManager = nullptr;
+        delete m_params;
+        m_params = nullptr;
+    }
+
     // XR_DOCS_TAG_BEGIN_RenderCuboid1
     size_t renderCuboidIndex = 0;
     // XR_DOCS_TAG_END_RenderCuboid1
@@ -1167,8 +1212,8 @@ private:
     SlamParams* m_params{nullptr};
     ModelManager* m_modelManager{nullptr};
 
-    std::shared_ptr<std::thread> m_slamThread{nullptr};;
-    std::shared_ptr<SlamManager> m_slamManager{nullptr};
+    std::thread* m_slamThread{nullptr};;
+    SlamManager* m_slamManager{nullptr};
 };
 
 void OpenXR_Main(GraphicsAPI_Type apiType) {
